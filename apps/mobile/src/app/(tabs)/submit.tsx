@@ -4,6 +4,8 @@ import {
   StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { useAuth } from "@clerk/expo";
 import * as Location from "expo-location";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3001";
@@ -20,6 +22,8 @@ interface TeamOption {
 }
 
 export default function SubmitCatchScreen() {
+  const router = useRouter();
+  const { isSignedIn, isLoaded, getToken } = useAuth();
   const [tournamentId, setTournamentId] = useState("");
   const [teamId, setTeamId] = useState("");
   const [speciesId, setSpeciesId] = useState("");
@@ -84,9 +88,13 @@ export default function SubmitCatchScreen() {
 
     setSubmitting(true);
     try {
+      const token = await getToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch(`${API_URL}/api/catches`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           tournamentId,
           teamId,
@@ -117,7 +125,25 @@ export default function SubmitCatchScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [tournamentId, teamId, speciesId, weightLbs, weightOz, lengthIn, latitude, longitude]);
+  }, [tournamentId, teamId, speciesId, weightLbs, weightOz, lengthIn, latitude, longitude, getToken]);
+
+  // Show sign-in wall if not authenticated
+  if (isLoaded && !isSignedIn) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={styles.authGate}>
+          <Text style={styles.authGateIcon}>🎣</Text>
+          <Text style={styles.authGateTitle}>Sign In to Submit</Text>
+          <Text style={styles.authGateBody}>
+            Sign in or create a free account to submit catches to your tournament.
+          </Text>
+          <TouchableOpacity style={styles.authGateBtn} onPress={() => router.push("/sign-in")}>
+            <Text style={styles.authGateBtnText}>Sign In / Create Account</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -292,4 +318,10 @@ const styles = StyleSheet.create({
   submitBtn: { backgroundColor: GREEN, borderRadius: 12, paddingVertical: 16, alignItems: "center", marginTop: 8 },
   submitBtnDisabled: { opacity: 0.6 },
   submitBtnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
+  authGate: { flex: 1, justifyContent: "center", alignItems: "center", padding: 32 },
+  authGateIcon: { fontSize: 64, marginBottom: 16 },
+  authGateTitle: { fontSize: 24, fontWeight: "800", color: "#1a1a1a", marginBottom: 10 },
+  authGateBody: { fontSize: 15, color: "#6b7280", textAlign: "center", lineHeight: 22, marginBottom: 28 },
+  authGateBtn: { backgroundColor: GREEN, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32 },
+  authGateBtnText: { color: "#fff", fontSize: 15, fontWeight: "800" },
 });

@@ -10,6 +10,7 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
+    "@clerk/expo": "^2.19.0",
     "@expo/metro-config": "^0.19.5",
     "@tourneyforge/api": "workspace:*",
     "@tourneyforge/config": "workspace:*",

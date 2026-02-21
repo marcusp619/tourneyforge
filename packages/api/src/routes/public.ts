@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { db } from "@tourneyforge/db";
-import { tenants, tournaments, teams } from "@tourneyforge/db";
+import { tenants, tournaments, teams, scoringFormats } from "@tourneyforge/db";
 import { resolveTheme } from "@tourneyforge/themes";
 import { eq, and, ne, or } from "drizzle-orm";
 
@@ -76,6 +76,48 @@ publicRouter.get("/tenants/:slug/tournaments", async (c) => {
     );
 
   return c.json({ data: publishedTournaments });
+});
+
+/**
+ * GET /api/public/tournaments/:id
+ * Returns a single tournament by ID with scoring format info.
+ * Used by the mobile app tournament detail screen.
+ */
+publicRouter.get("/tournaments/:id", async (c) => {
+  const id = c.req.param("id");
+
+  const [tournament] = await db
+    .select({
+      id: tournaments.id,
+      name: tournaments.name,
+      description: tournaments.description,
+      status: tournaments.status,
+      startDate: tournaments.startDate,
+      endDate: tournaments.endDate,
+      registrationDeadline: tournaments.registrationDeadline,
+      entryFee: tournaments.entryFee,
+      maxTeams: tournaments.maxTeams,
+      scoringFormatId: tournaments.scoringFormatId,
+    })
+    .from(tournaments)
+    .where(eq(tournaments.id, id))
+    .limit(1);
+
+  if (!tournament) {
+    return c.json({ error: { code: "NOT_FOUND", message: "Tournament not found" } }, 404);
+  }
+
+  let scoringFormatType: string | null = null;
+  if (tournament.scoringFormatId) {
+    const [fmt] = await db
+      .select({ type: scoringFormats.type, name: scoringFormats.name })
+      .from(scoringFormats)
+      .where(eq(scoringFormats.id, tournament.scoringFormatId))
+      .limit(1);
+    if (fmt) scoringFormatType = fmt.type;
+  }
+
+  return c.json({ data: { ...tournament, scoringFormatType } });
 });
 
 /**
