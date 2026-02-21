@@ -5,6 +5,9 @@ import { logger } from "hono/logger";
 // Import routes
 import { tenantRouter } from "./routes/tenants";
 import { tournamentRouter } from "./routes/tournaments";
+import { divisionRouter } from "./routes/divisions";
+import { scoringFormatRouter } from "./routes/scoring-formats";
+import { speciesRouter } from "./routes/species";
 import { leaderboardRouter } from "./routes/leaderboards";
 import { healthRouter } from "./routes/health";
 import { publicRouter } from "./routes/public";
@@ -23,6 +26,9 @@ app.route("/api/public", publicRouter);
 app.route("/api/tenants", tenantRouter);
 app.route("/api/tenants", themeRouter); // theme routes share /api/tenants/:id prefix
 app.route("/api/tournaments", tournamentRouter);
+app.route("/api/tournaments", divisionRouter); // divisions nested under tournaments
+app.route("/api/scoring-formats", scoringFormatRouter);
+app.route("/api/species", speciesRouter);
 app.route("/api/leaderboards", leaderboardRouter);
 
 // Start server
