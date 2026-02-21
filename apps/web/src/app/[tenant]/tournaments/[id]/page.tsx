@@ -163,11 +163,11 @@ export default async function TournamentDetailPage({
               : "Register now to secure your spot."}
           </p>
           <Link
-            href="/sign-up"
+            href={`/${slug}/tournaments/${id}/register`}
             className="inline-block bg-white font-semibold px-6 py-3 rounded-lg transition hover:opacity-90"
             style={{ color: "var(--color-primary)" }}
           >
-            Register Now
+            Register Now →
           </Link>
         </div>
       )}

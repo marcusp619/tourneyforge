@@ -15,6 +15,8 @@ const tournamentFormSchema = z.object({
   endDate: z.string().min(1),
   registrationDeadline: z.string().optional(),
   scoringFormatId: z.string().uuid().optional(),
+  entryFee: z.coerce.number().nonnegative().default(0), // dollars, converted to cents
+  maxTeams: z.coerce.number().int().positive().optional(),
 });
 
 export async function createTournament(formData: FormData) {
@@ -30,13 +32,15 @@ export async function createTournament(formData: FormData) {
     endDate: formData.get("endDate"),
     registrationDeadline: formData.get("registrationDeadline") || undefined,
     scoringFormatId: formData.get("scoringFormatId") || undefined,
+    entryFee: formData.get("entryFee") || 0,
+    maxTeams: formData.get("maxTeams") || undefined,
   });
 
   if (!parsed.success) {
     throw new Error(parsed.error.issues.map((i) => i.message).join(", "));
   }
 
-  const { name, description, startDate, endDate, registrationDeadline, scoringFormatId } =
+  const { name, description, startDate, endDate, registrationDeadline, scoringFormatId, entryFee, maxTeams } =
     parsed.data;
 
   const [tournament] = await db
@@ -50,6 +54,8 @@ export async function createTournament(formData: FormData) {
       registrationDeadline: registrationDeadline ? new Date(registrationDeadline) : null,
       status: "draft",
       scoringFormatId: scoringFormatId ?? null,
+      entryFee: Math.round(entryFee * 100), // convert dollars to cents
+      maxTeams: maxTeams ?? null,
     })
     .returning();
 
@@ -70,13 +76,15 @@ export async function updateTournament(id: string, formData: FormData) {
     endDate: formData.get("endDate"),
     registrationDeadline: formData.get("registrationDeadline") || undefined,
     scoringFormatId: formData.get("scoringFormatId") || undefined,
+    entryFee: formData.get("entryFee") || 0,
+    maxTeams: formData.get("maxTeams") || undefined,
   });
 
   if (!parsed.success) {
     throw new Error(parsed.error.issues.map((i) => i.message).join(", "));
   }
 
-  const { name, description, startDate, endDate, registrationDeadline, scoringFormatId } =
+  const { name, description, startDate, endDate, registrationDeadline, scoringFormatId, entryFee, maxTeams } =
     parsed.data;
 
   await db
@@ -88,6 +96,8 @@ export async function updateTournament(id: string, formData: FormData) {
       endDate: new Date(endDate),
       registrationDeadline: registrationDeadline ? new Date(registrationDeadline) : null,
       scoringFormatId: scoringFormatId ?? null,
+      entryFee: Math.round(entryFee * 100),
+      maxTeams: maxTeams ?? null,
       updatedAt: new Date(),
     })
     .where(and(eq(tournaments.id, id), eq(tournaments.tenantId, tenant.id)));

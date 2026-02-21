@@ -1,279 +1,96 @@
-"use client";
+import { requireTenant } from "@/lib/tenant";
+import { ThemeSettingsClient } from "./ThemeSettingsClient";
 
-import { useState, useTransition } from "react";
-import { themePresets } from "@tourneyforge/themes";
+export const metadata = { title: "Settings | Dashboard" };
 
-// Theme preset slugs available to all plans
-const PRESET_ORDER = ["classic", "coastal", "forest", "bold", "sport", "midnight"] as const;
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  not_connected: { label: "Not Connected", color: "#92400e", bg: "#fef3c7" },
+  pending: { label: "Pending Verification", color: "#1e40af", bg: "#dbeafe" },
+  active: { label: "Active", color: "#166534", bg: "#dcfce7" },
+};
 
-function ColorSwatch({ color }: { color: string }) {
-  return (
-    <span
-      className="inline-block w-4 h-4 rounded-full border border-black/10 align-middle mr-1"
-      style={{ backgroundColor: color }}
-    />
-  );
-}
+export default async function SettingsPage() {
+  const { tenant } = await requireTenant();
 
-export default function SettingsPage() {
-  const [selectedPreset, setSelectedPreset] = useState("classic");
-  const [primaryColor, setPrimaryColor] = useState("");
-  const [accentColor, setAccentColor] = useState("");
-  const [tagline, setTagline] = useState("");
-  const [saved, setSaved] = useState(false);
-  const [isPending, startTransition] = useTransition();
-
-  const preset = themePresets[selectedPreset] ?? themePresets["classic"]!;
-
-  const effectivePrimary = primaryColor || preset.primaryColor;
-  const effectiveAccent = accentColor || preset.accentColor;
-
-  function handleSave() {
-    startTransition(async () => {
-      // In production this would call PATCH /api/tenants/:id/theme
-      // For now, just simulate a save
-      await new Promise((r) => setTimeout(r, 500));
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    });
-  }
+  const stripeStatus = tenant.stripeAccountStatus ?? "not_connected";
+  const statusCfg = STATUS_CONFIG[stripeStatus] ?? STATUS_CONFIG["not_connected"]!;
+  const isConnected = stripeStatus === "active";
 
   return (
     <div className="max-w-3xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Site & Theme Settings</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
         <p className="text-gray-500 mt-1">
+          Manage your site appearance and payment settings.
+        </p>
+      </div>
+
+      {/* Stripe Connect */}
+      <section className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Stripe Payments</h2>
+            <p className="text-sm text-gray-500">
+              Connect your Stripe account to collect entry fees from anglers. Payments go directly
+              to your account minus a small platform fee.
+            </p>
+          </div>
+          <span
+            className="flex-shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full mt-1"
+            style={{ backgroundColor: statusCfg.bg, color: statusCfg.color }}
+          >
+            {statusCfg.label}
+          </span>
+        </div>
+
+        <div className="mt-5 flex items-center gap-3">
+          {isConnected ? (
+            <>
+              <span className="text-sm text-gray-700 font-medium">
+                Account ID:{" "}
+                <code className="text-xs bg-gray-100 px-2 py-0.5 rounded">
+                  {tenant.stripeConnectedAccountId}
+                </code>
+              </span>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- API route that redirects to Stripe, not a Next.js page */}
+              <a href="/api/stripe/connect" className="text-sm font-medium text-blue-600 hover:underline">
+                Reconnect
+              </a>
+            </>
+          ) : (
+            <>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- API route that redirects to Stripe, not a Next.js page */}
+              <a
+                href="/api/stripe/connect"
+                className="inline-block bg-[#635BFF] text-white font-semibold text-sm px-5 py-2.5 rounded-lg hover:bg-[#5851ea] transition"
+              >
+                Connect with Stripe
+              </a>
+              <p className="text-xs text-gray-400">
+                You will be redirected to Stripe to complete setup.
+              </p>
+            </>
+          )}
+        </div>
+
+        <p className="mt-4 text-xs text-gray-400 border-t border-gray-100 pt-4">
+          Platform fee:{" "}
+          {tenant.plan === "free" ? "3.5%" :
+           tenant.plan === "starter" ? "2.5%" :
+           tenant.plan === "pro" ? "1.75%" : "1.5%"}{" "}
+          per transaction on the{" "}
+          <span className="font-semibold capitalize">{tenant.plan}</span> plan.
+        </p>
+      </section>
+
+      {/* Theme & appearance (client component) */}
+      <div className="mb-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-1">Site & Theme</h2>
+        <p className="text-gray-500 text-sm">
           Customize how your public tournament site looks to visitors.
         </p>
       </div>
-
-      {/* Theme preset picker */}
-      <section className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">Theme Preset</h2>
-        <p className="text-sm text-gray-500 mb-5">
-          Choose a base theme. You can override colors below.
-        </p>
-
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {PRESET_ORDER.map((slug) => {
-            const p = themePresets[slug]!;
-            const isSelected = selectedPreset === slug;
-            return (
-              <button
-                key={slug}
-                type="button"
-                onClick={() => setSelectedPreset(slug)}
-                className="text-left rounded-xl border-2 p-4 transition"
-                style={{
-                  borderColor: isSelected ? effectivePrimary : "#e5e7eb",
-                  backgroundColor: p.backgroundColor,
-                }}
-              >
-                {/* Color preview strip */}
-                <div className="flex gap-1 mb-3">
-                  <span
-                    className="flex-1 h-2 rounded-full"
-                    style={{ backgroundColor: p.primaryColor }}
-                  />
-                  <span
-                    className="flex-1 h-2 rounded-full"
-                    style={{ backgroundColor: p.accentColor }}
-                  />
-                  <span
-                    className="flex-1 h-2 rounded-full"
-                    style={{ backgroundColor: p.surfaceColor }}
-                  />
-                </div>
-                <p
-                  className="font-semibold text-sm"
-                  style={{ color: p.textColor }}
-                >
-                  {p.name}
-                </p>
-                <p
-                  className="text-xs mt-0.5"
-                  style={{ color: p.mutedTextColor, opacity: 0.8 }}
-                >
-                  {p.description}
-                </p>
-                {isSelected && (
-                  <span
-                    className="mt-2 inline-block text-xs font-bold px-2 py-0.5 rounded-full text-white"
-                    style={{ backgroundColor: p.primaryColor }}
-                  >
-                    Selected
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Color overrides */}
-      <section className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">Color Overrides</h2>
-        <p className="text-sm text-gray-500 mb-5">
-          Optionally override the preset colors with your brand colors.
-        </p>
-
-        <div className="grid gap-5 sm:grid-cols-2">
-          <div>
-            <label
-              className="block text-sm font-medium text-gray-700 mb-1.5"
-              htmlFor="primary-color"
-            >
-              Primary Color
-              <ColorSwatch color={effectivePrimary} />
-              <span className="text-gray-400 text-xs font-normal ml-1">
-                (preset: {preset.primaryColor})
-              </span>
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                id="primary-color"
-                type="color"
-                value={primaryColor || preset.primaryColor}
-                onChange={(e) => setPrimaryColor(e.target.value)}
-                className="h-10 w-14 rounded border border-gray-300 cursor-pointer"
-              />
-              <input
-                type="text"
-                value={primaryColor}
-                onChange={(e) => setPrimaryColor(e.target.value)}
-                placeholder={preset.primaryColor}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              {primaryColor && (
-                <button
-                  type="button"
-                  onClick={() => setPrimaryColor("")}
-                  className="text-xs text-gray-400 hover:text-gray-600"
-                >
-                  Reset
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <label
-              className="block text-sm font-medium text-gray-700 mb-1.5"
-              htmlFor="accent-color"
-            >
-              Accent Color
-              <ColorSwatch color={effectiveAccent} />
-              <span className="text-gray-400 text-xs font-normal ml-1">
-                (preset: {preset.accentColor})
-              </span>
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                id="accent-color"
-                type="color"
-                value={accentColor || preset.accentColor}
-                onChange={(e) => setAccentColor(e.target.value)}
-                className="h-10 w-14 rounded border border-gray-300 cursor-pointer"
-              />
-              <input
-                type="text"
-                value={accentColor}
-                onChange={(e) => setAccentColor(e.target.value)}
-                placeholder={preset.accentColor}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              {accentColor && (
-                <button
-                  type="button"
-                  onClick={() => setAccentColor("")}
-                  className="text-xs text-gray-400 hover:text-gray-600"
-                >
-                  Reset
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Tagline */}
-      <section className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">Tagline</h2>
-        <p className="text-sm text-gray-500 mb-4">
-          A short marketing line displayed on your public homepage hero section.
-        </p>
-        <input
-          type="text"
-          value={tagline}
-          onChange={(e) => setTagline(e.target.value)}
-          placeholder="e.g. The Midwest's Premier Bass Tournament Series"
-          maxLength={200}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <p className="mt-1 text-xs text-gray-400">{tagline.length}/200</p>
-      </section>
-
-      {/* Logo upload (Phase 1 — UI only, upload handled separately) */}
-      <section className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-1">Logo</h2>
-        <p className="text-sm text-gray-500 mb-4">
-          Upload your organization logo. Shown in the site header. PNG, JPG, or SVG, up to 5 MB.
-        </p>
-        <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
-          <p className="text-4xl mb-3">🎣</p>
-          <p className="text-sm text-gray-500 mb-3">No logo uploaded yet</p>
-          <label className="inline-block cursor-pointer">
-            <span className="bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition">
-              Choose File
-            </span>
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/svg+xml"
-              className="sr-only"
-            />
-          </label>
-        </div>
-      </section>
-
-      {/* Live preview hint */}
-      <section
-        className="rounded-xl p-6 mb-6 text-white"
-        style={{ background: `linear-gradient(135deg, ${effectivePrimary}, ${effectiveAccent})` }}
-      >
-        <h2 className="font-bold mb-1">Live Preview</h2>
-        <p className="text-sm opacity-90">
-          This is how your header gradient will look with the current colors.
-        </p>
-        <div className="mt-3 inline-flex gap-3">
-          <span
-            className="text-xs font-semibold px-3 py-1 rounded-full bg-white/20"
-          >
-            {preset.name} theme
-          </span>
-          {primaryColor && (
-            <span className="text-xs font-semibold px-3 py-1 rounded-full bg-white/20">
-              Custom primary
-            </span>
-          )}
-        </div>
-      </section>
-
-      {/* Save button */}
-      <div className="flex items-center gap-4">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isPending}
-          className="bg-blue-600 text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-blue-700 transition disabled:opacity-60"
-        >
-          {isPending ? "Saving…" : "Save Changes"}
-        </button>
-        {saved && (
-          <span className="text-sm text-green-600 font-medium">
-            Changes saved!
-          </span>
-        )}
-      </div>
+      <ThemeSettingsClient />
     </div>
   );
 }

@@ -24,6 +24,9 @@ export const tenants = pgTable(
     fontFamily: text("font_family"),       // override, null = use preset
     heroImageUrl: text("hero_image_url"),  // background image for hero section
     tagline: text("tagline"),             // short marketing text shown on public site
+    // Stripe Connect
+    stripeConnectedAccountId: text("stripe_connected_account_id"),
+    stripeAccountStatus: text("stripe_account_status").notNull().default("not_connected"), // not_connected | pending | active
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

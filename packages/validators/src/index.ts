@@ -45,6 +45,8 @@ export const createTournamentSchema = z.object({
   registrationDeadline: z.coerce.date().nullish(),
   status: tournamentStatusSchema.default("draft"),
   scoringFormatId: z.string().uuid(),
+  entryFee: z.number().int().nonnegative().default(0), // cents
+  maxTeams: z.number().int().positive().nullish(),
 });
 
 export const updateTournamentSchema = createTournamentSchema.partial();
@@ -71,6 +73,27 @@ export const createRegistrationSchema = z.object({
   tournamentId: z.string().uuid(),
   divisionId: z.string().uuid().optional(),
 });
+
+// Registration form schema (used by the public-facing register page)
+export const registerFormSchema = z.object({
+  teamName: z.string().min(1, "Team name is required").max(100),
+  anglerName: z.string().min(1, "Your name is required").max(100),
+  boatName: z.string().max(100).optional(),
+  divisionId: z.string().uuid().optional(),
+});
+
+// Stripe Connect schemas
+export const stripeConnectCallbackSchema = z.object({
+  code: z.string(),
+});
+
+// Platform fee rates by plan (in basis points, e.g. 150 = 1.5%)
+export const PLATFORM_FEE_BPS: Record<string, number> = {
+  free: 350,     // 3.5%
+  starter: 250,  // 2.5%
+  pro: 175,      // 1.75%
+  enterprise: 150, // 1.5%
+};
 
 // Catch submission schemas
 export const createCatchSchema = z.object({
