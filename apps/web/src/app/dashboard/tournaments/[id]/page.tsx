@@ -103,6 +103,12 @@ export default async function TournamentDetailPage({ params }: Props) {
             </form>
           )}
           <Link
+            href={`/dashboard/tournaments/${id}/registrations`}
+            className="text-sm font-medium text-gray-500 hover:text-gray-700 px-3 py-2 border border-gray-200 rounded-lg transition"
+          >
+            Registrations
+          </Link>
+          <Link
             href={`/${tenant.slug}/tournaments/${id}`}
             target="_blank"
             className="text-sm font-medium text-gray-500 hover:text-gray-700 px-3 py-2 border border-gray-200 rounded-lg transition"
@@ -213,6 +219,42 @@ export default async function TournamentDetailPage({ params }: Props) {
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="entryFee">
+                Entry Fee (USD)
+              </label>
+              <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500">
+                <span className="bg-gray-50 border-r border-gray-300 px-3 py-2 text-sm text-gray-500">$</span>
+                <input
+                  id="entryFee"
+                  name="entryFee"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  defaultValue={(tournament.entryFee / 100).toFixed(2)}
+                  className="flex-1 px-3 py-2 text-sm focus:outline-none"
+                  placeholder="0.00"
+                />
+              </div>
+              <p className="mt-1 text-xs text-gray-400">Enter 0 for a free tournament.</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="maxTeams">
+                Max Teams
+              </label>
+              <input
+                id="maxTeams"
+                name="maxTeams"
+                type="number"
+                min="1"
+                defaultValue={tournament.maxTeams ?? ""}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Unlimited"
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-4 pt-2">

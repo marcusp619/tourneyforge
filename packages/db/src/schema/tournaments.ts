@@ -1,4 +1,4 @@
-import { pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { integer, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { pgPolicy } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -27,6 +27,8 @@ export const tournaments = pgTable(
     registrationDeadline: timestamp("registration_deadline"),
     status: tournamentStatusEnum("status").notNull().default("draft"),
     scoringFormatId: uuid("scoring_format_id").references(() => scoringFormats.id),
+    entryFee: integer("entry_fee").notNull().default(0), // in cents, 0 = free
+    maxTeams: integer("max_teams"), // null = unlimited
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
