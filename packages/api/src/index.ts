@@ -12,6 +12,8 @@ import { leaderboardRouter } from "./routes/leaderboards";
 import { healthRouter } from "./routes/health";
 import { publicRouter } from "./routes/public";
 import { themeRouter } from "./routes/theme";
+import { registrationRouter } from "./routes/registrations";
+import { stripeRouter } from "./routes/stripe";
 
 // Create main app
 const app = new Hono();
@@ -30,6 +32,8 @@ app.route("/api/tournaments", divisionRouter); // divisions nested under tournam
 app.route("/api/scoring-formats", scoringFormatRouter);
 app.route("/api/species", speciesRouter);
 app.route("/api/leaderboards", leaderboardRouter);
+app.route("/api/registrations", registrationRouter);
+app.route("/api/stripe", stripeRouter);
 
 // Start server
 const port = process.env.PORT ?? 3001;

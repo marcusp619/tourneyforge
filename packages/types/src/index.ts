@@ -12,6 +12,9 @@ export interface Tenant {
   fontFamily: string | null;
   heroImageUrl: string | null;
   tagline: string | null;
+  // Stripe Connect
+  stripeConnectedAccountId: string | null;
+  stripeAccountStatus: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -35,6 +38,9 @@ export interface Tournament {
   endDate: Date;
   registrationDeadline: Date | null;
   status: "draft" | "open" | "active" | "completed";
+  scoringFormatId: string | null;
+  entryFee: number; // cents
+  maxTeams: number | null;
   createdAt: Date;
   updatedAt: Date;
 }

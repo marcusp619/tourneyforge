@@ -10,7 +10,7 @@ import Stripe from "stripe";
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY is not set");
-  return new Stripe(key, { apiVersion: "2025-01-27.acacia" });
+  return new Stripe(key, { apiVersion: "2025-02-24.acacia" });
 }
 
 export async function createRegistration(
@@ -56,7 +56,7 @@ export async function createRegistration(
 
   // Check capacity
   if (tournament.maxTeams) {
-    const [{ value: teamCount }] = await db
+    const countResult = await db
       .select({ value: count() })
       .from(registrations)
       .where(
@@ -65,6 +65,7 @@ export async function createRegistration(
           eq(registrations.tenantId, tenant.id)
         )
       );
+    const teamCount = countResult[0]?.value ?? 0;
     if (teamCount >= tournament.maxTeams) {
       throw new Error("Tournament is at full capacity");
     }
