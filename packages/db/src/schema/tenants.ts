@@ -17,6 +17,13 @@ export const tenants = pgTable(
     plan: tenantPlanEnum("plan").notNull().default("free"),
     logoUrl: text("logo_url"),
     customDomain: text("custom_domain").unique(),
+    // Theming
+    themePreset: text("theme_preset").notNull().default("classic"),
+    primaryColor: text("primary_color"),   // hex override, null = use preset
+    accentColor: text("accent_color"),     // hex override, null = use preset
+    fontFamily: text("font_family"),       // override, null = use preset
+    heroImageUrl: text("hero_image_url"),  // background image for hero section
+    tagline: text("tagline"),             // short marketing text shown on public site
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
