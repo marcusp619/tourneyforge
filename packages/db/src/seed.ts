@@ -16,16 +16,22 @@ const seedTenants = [
     name: "Midwest Bass Trail",
     slug: "midwest-bass",
     plan: "pro" as const,
+    themePreset: "classic",
+    tagline: "The Midwest's Premier Bass Tournament Series",
   },
   {
     name: "Carolina Kayak Fishing",
     slug: "carolina-kayak",
     plan: "starter" as const,
+    themePreset: "coastal",
+    tagline: "CPR Tournament Fishing — Catch, Photo, Release",
   },
   {
     name: "Lake Norman Bass Club",
     slug: "lake-norman-bass",
     plan: "free" as const,
+    themePreset: "forest",
+    tagline: "Lake Norman's Local Bass Fishing Community",
   },
 ];
 

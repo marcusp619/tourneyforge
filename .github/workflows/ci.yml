@@ -20,8 +20,7 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
+        # No version: field — reads "packageManager" from package.json (pnpm@9.15.4)
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -33,7 +32,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Type check
-        run: pnpm turbo run check
+        run: pnpm run check
 
   lint:
     name: Lint
@@ -44,8 +43,7 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
+        # No version: field — reads "packageManager" from package.json (pnpm@9.15.4)
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -57,7 +55,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: pnpm turbo run lint
+        run: pnpm run lint
 
   test:
     name: Test
@@ -68,8 +66,7 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
+        # No version: field — reads "packageManager" from package.json (pnpm@9.15.4)
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -86,4 +83,4 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run tests
-        run: pnpm turbo run test
+        run: pnpm run test

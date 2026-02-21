@@ -3,6 +3,13 @@ import { z } from "zod";
 // Tenant schemas
 export const tenantPlanSchema = z.enum(["free", "starter", "pro", "enterprise"]);
 
+// Hex color validation helper
+const hexColorSchema = z
+  .string()
+  .regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex color (e.g. #1d4ed8)")
+  .optional()
+  .nullable();
+
 export const createTenantSchema = z.object({
   name: z.string().min(1).max(100),
   slug: z.string()
@@ -13,6 +20,19 @@ export const createTenantSchema = z.object({
 });
 
 export const updateTenantSchema = createTenantSchema.partial();
+
+export const updateTenantThemeSchema = z.object({
+  themePreset: z.enum(["classic", "coastal", "forest", "bold", "sport", "midnight"]).optional(),
+  primaryColor: hexColorSchema,
+  accentColor: hexColorSchema,
+  fontFamily: z.string().max(100).optional().nullable(),
+  tagline: z.string().max(200).optional().nullable(),
+});
+
+export const logoUploadRequestSchema = z.object({
+  contentType: z.enum(["image/jpeg", "image/png", "image/webp", "image/svg+xml"]),
+  sizeBytes: z.number().int().positive().max(5 * 1024 * 1024), // 5 MB max
+});
 
 // Tournament schemas
 export const tournamentStatusSchema = z.enum(["draft", "open", "active", "completed"]);
