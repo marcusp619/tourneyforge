@@ -191,8 +191,8 @@ export default async function TournamentDetailPage({
               </p>
             </div>
           </div>
-          <div className="mt-4">
-            <Link href="/sign-in" className="btn-primary inline-block">
+          <div className="mt-4 flex gap-3 flex-wrap">
+            <Link href={`/${slug}/tournaments/${id}/leaderboard`} className="btn-primary inline-block">
               View Live Leaderboard
             </Link>
           </div>
@@ -208,10 +208,10 @@ export default async function TournamentDetailPage({
             Tournament Results
           </h2>
           <p className="text-sm mb-4" style={{ color: "var(--color-muted)" }}>
-            This tournament has concluded. Sign in to view the final standings.
+            This tournament has concluded. View the final standings below.
           </p>
-          <Link href="/sign-in" className="btn-primary inline-block">
-            View Results
+          <Link href={`/${slug}/tournaments/${id}/leaderboard`} className="btn-primary inline-block">
+            View Final Results
           </Link>
         </div>
       )}

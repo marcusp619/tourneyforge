@@ -1,12 +1,12 @@
 import { Hono } from "hono";
 import { db } from "@tourneyforge/db";
-import { catches, tournaments, scoringFormats } from "@tourneyforge/db";
+import { catches, tournaments, scoringFormats, teams } from "@tourneyforge/db";
 import { calculateStandings, type ScoringInput } from "@tourneyforge/scoring";
 import { eq } from "drizzle-orm";
 
 export const leaderboardRouter = new Hono();
 
-// Get leaderboard for a tournament
+// GET /api/leaderboards/:tournamentId — compute and return live standings
 leaderboardRouter.get("/:tournamentId", async (c) => {
   const tournamentId = c.req.param("tournamentId");
 
@@ -33,12 +33,9 @@ leaderboardRouter.get("/:tournamentId", async (c) => {
       .limit(1);
 
     if (format) {
-      // Map DB type to scoring engine format
       if (format.type === "weight" || format.type === "length" || format.type === "count") {
         scoringFormat = format.type;
       }
-
-      // Parse rules JSON for options
       try {
         const rules = JSON.parse(format.rules) as Record<string, unknown>;
         const opts: ScoringInput["options"] = {};
@@ -51,11 +48,16 @@ leaderboardRouter.get("/:tournamentId", async (c) => {
     }
   }
 
-  // Get all catches for this tournament
-  const tournamentCatches = await db
-    .select()
-    .from(catches)
-    .where(eq(catches.tournamentId, tournamentId));
+  // Fetch catches + team names together
+  const [tournamentCatches, tournamentTeams] = await Promise.all([
+    db.select().from(catches).where(eq(catches.tournamentId, tournamentId)),
+    db
+      .select({ id: teams.id, name: teams.name })
+      .from(teams)
+      .where(eq(teams.tournamentId, tournamentId)),
+  ]);
+
+  const teamNames = new Map(tournamentTeams.map((t) => [t.id, t.name]));
 
   const input: ScoringInput = {
     catches: tournamentCatches.map((c) => ({
@@ -72,6 +74,12 @@ leaderboardRouter.get("/:tournamentId", async (c) => {
 
   const result = calculateStandings(input);
 
+  // Enrich leaderboard entries with real team names
+  const leaderboard = result.leaderboard.map((entry) => ({
+    ...entry,
+    teamName: teamNames.get(entry.teamId) ?? entry.teamId,
+  }));
+
   return c.json({
     data: {
       tournament: {
@@ -80,7 +88,7 @@ leaderboardRouter.get("/:tournamentId", async (c) => {
         status: tournament.status,
         scoringFormat,
       },
-      leaderboard: result.leaderboard,
+      leaderboard,
       totalCatches: result.totalCatches,
       speciesBreakdown: result.speciesBreakdown,
     },

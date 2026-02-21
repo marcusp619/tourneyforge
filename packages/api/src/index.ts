@@ -14,6 +14,7 @@ import { publicRouter } from "./routes/public";
 import { themeRouter } from "./routes/theme";
 import { registrationRouter } from "./routes/registrations";
 import { stripeRouter } from "./routes/stripe";
+import { catchRouter } from "./routes/catches";
 
 // Create main app
 const app = new Hono();
@@ -33,6 +34,7 @@ app.route("/api/scoring-formats", scoringFormatRouter);
 app.route("/api/species", speciesRouter);
 app.route("/api/leaderboards", leaderboardRouter);
 app.route("/api/registrations", registrationRouter);
+app.route("/api/catches", catchRouter);
 app.route("/api/stripe", stripeRouter);
 
 // Start server
