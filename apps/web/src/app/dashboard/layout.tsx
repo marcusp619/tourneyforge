@@ -6,7 +6,8 @@ import { UserButton } from "@clerk/nextjs";
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: "📊" },
   { href: "/dashboard/tournaments", label: "Tournaments", icon: "🏆" },
-  { href: "/dashboard/settings", label: "Site Settings", icon: "🎨" },
+  { href: "/dashboard/scoring-formats", label: "Scoring Formats", icon: "📏" },
+  { href: "/dashboard/settings", label: "Site & Theme", icon: "🎨" },
 ];
 
 export default async function DashboardLayout({

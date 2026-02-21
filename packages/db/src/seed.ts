@@ -1,8 +1,8 @@
 import { db } from "./index";
 import { tenants } from "./schema/tenants";
 import { users } from "./schema/users";
-import { tournaments } from "./schema/tournaments";
-import { scoringFormats } from "./schema/tournaments";
+import { tournaments, scoringFormats } from "./schema/tournaments";
+import { species } from "./schema/teams-catches";
 import { tenantMembers } from "./schema/tenant-members";
 
 /**
@@ -84,6 +84,53 @@ const seedScoringFormats = [
   },
 ];
 
+const seedSpecies = [
+  // Bass
+  { name: "Largemouth Bass", commonName: "Largemouth Bass", scientificName: "Micropterus salmoides" },
+  { name: "Smallmouth Bass", commonName: "Smallmouth Bass", scientificName: "Micropterus dolomieu" },
+  { name: "Spotted Bass", commonName: "Spotted Bass", scientificName: "Micropterus punctulatus" },
+  { name: "Striped Bass", commonName: "Striped Bass", scientificName: "Morone saxatilis" },
+  { name: "White Bass", commonName: "White Bass", scientificName: "Morone chrysops" },
+  { name: "Rock Bass", commonName: "Rock Bass", scientificName: "Ambloplites rupestris" },
+  // Crappie & Panfish
+  { name: "Black Crappie", commonName: "Black Crappie", scientificName: "Pomoxis nigromaculatus" },
+  { name: "White Crappie", commonName: "White Crappie", scientificName: "Pomoxis annularis" },
+  { name: "Bluegill", commonName: "Bluegill", scientificName: "Lepomis macrochirus" },
+  { name: "Redear Sunfish", commonName: "Shellcracker", scientificName: "Lepomis microlophus" },
+  { name: "Pumpkinseed", commonName: "Pumpkinseed", scientificName: "Lepomis gibbosus" },
+  // Pike family
+  { name: "Northern Pike", commonName: "Northern Pike", scientificName: "Esox lucius" },
+  { name: "Muskellunge", commonName: "Musky", scientificName: "Esox masquinongy" },
+  { name: "Tiger Musky", commonName: "Tiger Musky", scientificName: "Esox masquinongy × lucius" },
+  { name: "Chain Pickerel", commonName: "Chain Pickerel", scientificName: "Esox niger" },
+  // Walleye & Perch
+  { name: "Walleye", commonName: "Walleye", scientificName: "Sander vitreus" },
+  { name: "Sauger", commonName: "Sauger", scientificName: "Sander canadensis" },
+  { name: "Yellow Perch", commonName: "Yellow Perch", scientificName: "Perca flavescens" },
+  // Catfish
+  { name: "Channel Catfish", commonName: "Channel Cat", scientificName: "Ictalurus punctatus" },
+  { name: "Blue Catfish", commonName: "Blue Cat", scientificName: "Ictalurus furcatus" },
+  { name: "Flathead Catfish", commonName: "Flathead Cat", scientificName: "Pylodictis olivaris" },
+  // Trout & Salmon
+  { name: "Rainbow Trout", commonName: "Rainbow Trout", scientificName: "Oncorhynchus mykiss" },
+  { name: "Brown Trout", commonName: "Brown Trout", scientificName: "Salmo trutta" },
+  { name: "Brook Trout", commonName: "Brookie", scientificName: "Salvelinus fontinalis" },
+  { name: "Lake Trout", commonName: "Laker", scientificName: "Salvelinus namaycush" },
+  { name: "Chinook Salmon", commonName: "King Salmon", scientificName: "Oncorhynchus tshawytscha" },
+  { name: "Coho Salmon", commonName: "Silver Salmon", scientificName: "Oncorhynchus kisutch" },
+  // Carp & Other
+  { name: "Common Carp", commonName: "Common Carp", scientificName: "Cyprinus carpio" },
+  { name: "Grass Carp", commonName: "Grass Carp", scientificName: "Ctenopharyngodon idella" },
+  { name: "Bowfin", commonName: "Bowfin", scientificName: "Amia calva" },
+  { name: "Gar", commonName: "Longnose Gar", scientificName: "Lepisosteus osseus" },
+  // Saltwater (common inshore)
+  { name: "Redfish", commonName: "Red Drum", scientificName: "Sciaenops ocellatus" },
+  { name: "Speckled Trout", commonName: "Spotted Seatrout", scientificName: "Cynoscion nebulosus" },
+  { name: "Flounder", commonName: "Southern Flounder", scientificName: "Paralichthys lethostigma" },
+  { name: "Snook", commonName: "Common Snook", scientificName: "Centropomus undecimalis" },
+  { name: "Tarpon", commonName: "Tarpon", scientificName: "Megalops atlanticus" },
+];
+
 async function seed() {
   console.log("🌱 Starting seed...");
 
@@ -94,6 +141,12 @@ async function seed() {
   await db.delete(scoringFormats);
   await db.delete(tenants);
   await db.delete(users);
+  await db.delete(species);
+
+  // Seed species (system-wide)
+  console.log("🐟 Seeding species...");
+  await db.insert(species).values(seedSpecies);
+  console.log(`   ✅ Created ${seedSpecies.length} species`);
 
   // Insert tenants
   console.log("📦 Seeding tenants...");
