@@ -1,0 +1,19 @@
+{
+  "name": "@tourneyforge/themes",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tamagui/core": "^1.144.3",
+    "@tamagui/helpers-tamagui": "^1.144.3",
+    "tamagui": "^1.144.3"
+  },
+  "devDependencies": {
+    "@tourneyforge/config": "workspace:*",
+    "typescript": "^5.7.3"
+  }
+}

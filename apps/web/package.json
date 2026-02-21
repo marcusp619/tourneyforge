@@ -1,0 +1,35 @@
+{
+  "name": "@tourneyforge/web",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^6.11.0",
+    "@tourneyforge/api": "workspace:*",
+    "@tourneyforge/config": "workspace:*",
+    "@tourneyforge/db": "workspace:*",
+    "@tourneyforge/scoring": "workspace:*",
+    "@tourneyforge/themes": "workspace:*",
+    "@tourneyforge/types": "workspace:*",
+    "@tourneyforge/ui": "workspace:*",
+    "@tourneyforge/validators": "workspace:*",
+    "next": "15.2.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.4",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@tourneyforge/config": "workspace:*",
+    "eslint": "^9.20.1",
+    "eslint-config-next": "15.2.4",
+    "typescript": "^5.7.3"
+  }
+}

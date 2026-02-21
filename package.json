@@ -1,0 +1,27 @@
+{
+  "name": "tourneyforge",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "check": "turbo run check",
+    "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "db:push": "cd packages/db && bun run push",
+    "db:migrate": "cd packages/db && bun run migrate",
+    "db:generate": "cd packages/db && bun run generate",
+    "db:studio": "cd packages/db && bun run studio",
+    "db:seed": "cd packages/db && bun run seed"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.2",
+    "turbo": "^2.4.2",
+    "typescript": "^5.7.3"
+  },
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

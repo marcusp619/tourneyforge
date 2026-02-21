@@ -1,0 +1,12 @@
+{
+  "extends": "@tourneyforge/config/base-tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "types": ["bun-types"]
+  },
+  "include": ["src"]
+}

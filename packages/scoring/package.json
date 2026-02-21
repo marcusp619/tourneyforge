@@ -1,0 +1,20 @@
+{
+  "name": "@tourneyforge/scoring",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "lint": "eslint src/",
+    "test": "bun test",
+    "test:watch": "bun test --watch"
+  },
+  "dependencies": {
+    "@tourneyforge/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@tourneyforge/config": "workspace:*",
+    "typescript": "^5.7.3"
+  }
+}
