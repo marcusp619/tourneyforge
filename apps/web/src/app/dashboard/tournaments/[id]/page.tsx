@@ -109,6 +109,12 @@ export default async function TournamentDetailPage({ params }: Props) {
             Registrations
           </Link>
           <Link
+            href={`/dashboard/tournaments/${id}/catches`}
+            className="text-sm font-medium text-gray-500 hover:text-gray-700 px-3 py-2 border border-gray-200 rounded-lg transition"
+          >
+            Catch Log
+          </Link>
+          <Link
             href={`/${tenant.slug}/tournaments/${id}`}
             target="_blank"
             className="text-sm font-medium text-gray-500 hover:text-gray-700 px-3 py-2 border border-gray-200 rounded-lg transition"
@@ -267,6 +273,31 @@ export default async function TournamentDetailPage({ params }: Props) {
           </div>
         </div>
       </form>
+
+      {/* Live standings shortcut — shown when tournament is active */}
+      {tournament.status === "active" && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-8 flex items-center justify-between gap-4">
+          <div>
+            <p className="font-semibold text-blue-900">Tournament is Live</p>
+            <p className="text-sm text-blue-700 mt-0.5">Review incoming catches and watch the standings update in real time.</p>
+          </div>
+          <div className="flex gap-2 flex-shrink-0">
+            <Link
+              href={`/dashboard/tournaments/${id}/catches`}
+              className="text-sm font-semibold px-4 py-2 bg-white border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 transition"
+            >
+              Catch Log
+            </Link>
+            <Link
+              href={`/${tenant.slug}/tournaments/${id}/leaderboard`}
+              target="_blank"
+              className="text-sm font-semibold px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            >
+              Live Leaderboard ↗
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Divisions */}
       <div className="bg-white rounded-xl border border-gray-200 p-6 mb-8">

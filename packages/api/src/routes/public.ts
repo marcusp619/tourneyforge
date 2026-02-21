@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { db } from "@tourneyforge/db";
-import { tenants, tournaments } from "@tourneyforge/db";
+import { tenants, tournaments, teams } from "@tourneyforge/db";
 import { resolveTheme } from "@tourneyforge/themes";
-import { eq, and, ne } from "drizzle-orm";
+import { eq, and, ne, or } from "drizzle-orm";
 
 export const publicRouter = new Hono();
 
@@ -76,4 +76,44 @@ publicRouter.get("/tenants/:slug/tournaments", async (c) => {
     );
 
   return c.json({ data: publishedTournaments });
+});
+
+/**
+ * GET /api/public/tournaments
+ * Returns all open and active tournaments across all tenants.
+ * Used by the mobile app tournaments tab.
+ */
+publicRouter.get("/tournaments", async (c) => {
+  const allTournaments = await db
+    .select({
+      id: tournaments.id,
+      name: tournaments.name,
+      status: tournaments.status,
+      startDate: tournaments.startDate,
+      endDate: tournaments.endDate,
+      entryFee: tournaments.entryFee,
+    })
+    .from(tournaments)
+    .where(or(eq(tournaments.status, "open"), eq(tournaments.status, "active")));
+
+  return c.json({ data: allTournaments });
+});
+
+/**
+ * GET /api/public/teams?tournamentId=
+ * Returns teams for a given tournament.
+ * Used by the mobile app catch submission screen.
+ */
+publicRouter.get("/teams", async (c) => {
+  const tournamentId = c.req.query("tournamentId");
+  if (!tournamentId) {
+    return c.json({ error: { code: "BAD_REQUEST", message: "tournamentId is required" } }, 400);
+  }
+
+  const tournamentTeams = await db
+    .select({ id: teams.id, name: teams.name })
+    .from(teams)
+    .where(eq(teams.tournamentId, tournamentId));
+
+  return c.json({ data: tournamentTeams });
 });

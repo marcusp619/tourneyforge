@@ -109,6 +109,19 @@ export const createCatchSchema = z.object({
   }).optional(),
 });
 
+// Full catch submit schema (includes tournamentId for API endpoint)
+export const catchSubmitSchema = z.object({
+  tournamentId: z.string().uuid(),
+  teamId: z.string().uuid(),
+  speciesId: z.string().uuid(),
+  weight: z.number().nonnegative().max(10000), // ounces
+  length: z.number().nonnegative().max(200),   // inches
+  photoUrl: z.string().url().optional(),
+  latitude: z.string().optional(),
+  longitude: z.string().optional(),
+  timestamp: z.coerce.date().default(() => new Date()),
+});
+
 // API response schemas
 export const apiResponseSchema = <T extends z.ZodType>(data: T) => z.object({
   data,
