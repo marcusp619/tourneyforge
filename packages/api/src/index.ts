@@ -15,6 +15,7 @@ import { themeRouter } from "./routes/theme";
 import { registrationRouter } from "./routes/registrations";
 import { stripeRouter } from "./routes/stripe";
 import { catchRouter } from "./routes/catches";
+import { sponsorRouter } from "./routes/sponsors";
 
 // Create main app
 const app = new Hono();
@@ -36,6 +37,7 @@ app.route("/api/leaderboards", leaderboardRouter);
 app.route("/api/registrations", registrationRouter);
 app.route("/api/catches", catchRouter);
 app.route("/api/stripe", stripeRouter);
+app.route("/api/sponsors", sponsorRouter);
 
 // Start server
 const port = process.env.PORT ?? 3001;

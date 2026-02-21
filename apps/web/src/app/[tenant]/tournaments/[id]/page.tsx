@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { db, tenants, tournaments } from "@tourneyforge/db";
-import { eq, and } from "drizzle-orm";
+import { db, tenants, tournaments, sponsors } from "@tourneyforge/db";
+import { eq, and, asc } from "drizzle-orm";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -38,6 +38,9 @@ function formatTime(date: Date): string {
   }).format(date);
 }
 
+const TIER_ORDER: Record<string, number> = { title: 0, gold: 1, silver: 2, bronze: 3 };
+const TIER_LABELS: Record<string, string> = { title: "Title Sponsor", gold: "Gold", silver: "Silver", bronze: "Bronze" };
+
 export default async function TournamentDetailPage({
   params,
 }: TournamentDetailPageProps) {
@@ -59,6 +62,12 @@ export default async function TournamentDetailPage({
 
   if (!tournament || tournament.status === "draft") notFound();
 
+  const tournamentSponsors = await db
+    .select()
+    .from(sponsors)
+    .where(and(eq(sponsors.tenantId, tenant.id), eq(sponsors.tournamentId, id)))
+    .orderBy(asc(sponsors.displayOrder), asc(sponsors.createdAt));
+
   const isOpen = tournament.status === "open";
   const isActive = tournament.status === "active";
   const isCompleted = tournament.status === "completed";
@@ -67,6 +76,18 @@ export default async function TournamentDetailPage({
     isOpen &&
     (!tournament.registrationDeadline ||
       tournament.registrationDeadline > new Date());
+
+  // Group sponsors by tier
+  const sponsorsByTier = tournamentSponsors.reduce<Record<string, typeof tournamentSponsors>>((acc, s) => {
+    const tier = s.tier;
+    if (!acc[tier]) acc[tier] = [];
+    acc[tier]!.push(s);
+    return acc;
+  }, {});
+
+  const tierGroups = Object.entries(sponsorsByTier).sort(
+    ([a], [b]) => (TIER_ORDER[a] ?? 99) - (TIER_ORDER[b] ?? 99)
+  );
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
@@ -213,6 +234,60 @@ export default async function TournamentDetailPage({
           <Link href={`/${slug}/tournaments/${id}/leaderboard`} className="btn-primary inline-block">
             View Final Results
           </Link>
+        </div>
+      )}
+
+      {/* Sponsors */}
+      {tierGroups.length > 0 && (
+        <div className="card mb-8">
+          <h2
+            className="text-lg font-semibold mb-6"
+            style={{ color: "var(--color-text)" }}
+          >
+            Tournament Sponsors
+          </h2>
+          <div className="space-y-6">
+            {tierGroups.map(([tier, tierSponsors]) => (
+              <div key={tier}>
+                <p
+                  className="text-xs font-bold uppercase tracking-widest mb-3"
+                  style={{ color: "var(--color-muted)" }}
+                >
+                  {TIER_LABELS[tier] ?? tier}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {tierSponsors.map((s) => (
+                    <div key={s.id}>
+                      {s.website ? (
+                        <a
+                          href={s.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block px-4 py-2 rounded-lg border font-medium text-sm transition hover:opacity-80"
+                          style={{
+                            borderColor: "var(--color-primary)",
+                            color: "var(--color-primary)",
+                          }}
+                        >
+                          {s.name}
+                        </a>
+                      ) : (
+                        <span
+                          className="inline-block px-4 py-2 rounded-lg border font-medium text-sm"
+                          style={{
+                            borderColor: "var(--color-muted)",
+                            color: "var(--color-text)",
+                          }}
+                        >
+                          {s.name}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

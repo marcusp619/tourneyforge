@@ -1,7 +1,8 @@
 import { Hono } from "hono";
-import { db, registrations, tenants } from "@tourneyforge/db";
+import { db, registrations, tenants, teams, users, tournaments } from "@tourneyforge/db";
 import { eq, and } from "drizzle-orm";
 import Stripe from "stripe";
+import { sendRegistrationConfirmation } from "../lib/email";
 
 export const stripeRouter = new Hono();
 
@@ -17,7 +18,7 @@ function getStripe() {
  * Handles Stripe webhook events. Must receive the raw body for signature verification.
  *
  * Key events handled:
- * - checkout.session.completed → confirm registration + mark paid
+ * - checkout.session.completed → confirm registration + mark paid + send email
  * - checkout.session.expired  → cancel pending registration
  * - account.updated           → sync Stripe Connect account status
  */
@@ -48,6 +49,8 @@ stripeRouter.post("/webhook", async (c) => {
         const session = event.data.object as Stripe.Checkout.Session;
         const registrationId = session.metadata?.["registrationId"];
         const tenantId = session.metadata?.["tenantId"];
+        const teamId = session.metadata?.["teamId"];
+        const tournamentId = session.metadata?.["tournamentId"];
 
         if (registrationId && tenantId) {
           await db
@@ -64,6 +67,56 @@ stripeRouter.post("/webhook", async (c) => {
                 eq(registrations.tenantId, tenantId)
               )
             );
+
+          // Send confirmation email (best-effort)
+          if (teamId && tournamentId) {
+            try {
+              const [team] = await db
+                .select({ name: teams.name, captainId: teams.captainId })
+                .from(teams)
+                .where(eq(teams.id, teamId))
+                .limit(1);
+
+              const [tenant] = await db
+                .select({ name: tenants.name, slug: tenants.slug })
+                .from(tenants)
+                .where(eq(tenants.id, tenantId))
+                .limit(1);
+
+              const [tournament] = await db
+                .select({ name: tournaments.name, startDate: tournaments.startDate })
+                .from(tournaments)
+                .where(eq(tournaments.id, tournamentId))
+                .limit(1);
+
+              if (team && tenant && tournament) {
+                const [captain] = await db
+                  .select({ email: users.email })
+                  .from(users)
+                  .where(eq(users.id, team.captainId))
+                  .limit(1);
+
+                if (captain && !captain.email.endsWith("@placeholder.com")) {
+                  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "tourneyforge.com";
+                  const tournamentUrl = `https://${tenant.slug}.${rootDomain}/tournaments/${tournamentId}`;
+                  const dateStr = tournament.startDate.toLocaleDateString("en-US", {
+                    weekday: "long", month: "long", day: "numeric", year: "numeric",
+                  });
+
+                  await sendRegistrationConfirmation({
+                    to: captain.email,
+                    tenantName: tenant.name,
+                    tournamentName: tournament.name,
+                    teamName: team.name,
+                    tournamentDate: dateStr,
+                    tournamentUrl,
+                  });
+                }
+              }
+            } catch (emailErr) {
+              console.error("[stripe webhook] email error:", emailErr);
+            }
+          }
         }
         break;
       }

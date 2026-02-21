@@ -19,16 +19,18 @@
     "@tourneyforge/types": "workspace:*",
     "@tourneyforge/ui": "workspace:*",
     "@tourneyforge/validators": "workspace:*",
+    "@upstash/redis": "^1.36.2",
     "next": "15.2.4",
     "react": "^18.3.1",
-    "stripe": "^17.5.0",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "resend": "^6.9.2",
+    "stripe": "^17.5.0"
   },
   "devDependencies": {
+    "@tourneyforge/config": "workspace:*",
     "@types/node": "^22.13.4",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "@tourneyforge/config": "workspace:*",
     "eslint": "^9.20.1",
     "eslint-config-next": "15.2.4",
     "typescript": "^5.7.3"
