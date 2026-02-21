@@ -3,6 +3,7 @@ import { db, tenants } from "@tourneyforge/db";
 import { eq } from "drizzle-orm";
 import { resolveTheme, themeToCssVars } from "@tourneyforge/themes";
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
 
 interface TenantLayoutProps {
@@ -79,9 +80,11 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href={`/${slug}`} className="flex items-center gap-3">
             {tenant.logoUrl ? (
-              <img
+              <Image
                 src={tenant.logoUrl}
                 alt={`${tenant.name} logo`}
+                height={40}
+                width={160}
                 className="h-10 w-auto object-contain"
               />
             ) : (

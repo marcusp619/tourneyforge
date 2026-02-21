@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { db, tenants, tournaments } from "@tourneyforge/db";
-import { eq, and, gte, or } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import { resolveTheme } from "@tourneyforge/themes";
 import Link from "next/link";
 

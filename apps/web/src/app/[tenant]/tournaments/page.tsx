@@ -27,8 +27,6 @@ function formatDate(date: Date): string {
   }).format(date);
 }
 
-const STATUS_ORDER: Record<string, number> = { active: 0, open: 1, draft: 2, completed: 3 };
-
 function StatusBadge({ status }: { status: string }) {
   const configs: Record<string, { bg: string; text: string; label: string }> = {
     open: { bg: "#dcfce7", text: "#166534", label: "Open" },

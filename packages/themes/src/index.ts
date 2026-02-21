@@ -2,6 +2,10 @@ import { themePresets, DEFAULT_PRESET_SLUG } from "./presets";
 export type { ThemePreset } from "./presets";
 export { themePresets, DEFAULT_PRESET_SLUG };
 
+// Re-export Tamagui config for backward compat (used by @tourneyforge/ui)
+export type { TamaguiConfig } from "./tamagui";
+export { default } from "./tamagui";
+
 export interface TenantThemeInput {
   themePreset?: string | null;
   primaryColor?: string | null;
