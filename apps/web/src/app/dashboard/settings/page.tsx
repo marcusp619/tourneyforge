@@ -52,12 +52,14 @@ export default async function SettingsPage() {
                   {tenant.stripeConnectedAccountId}
                 </code>
               </span>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- API route that redirects to Stripe, not a Next.js page */}
               <a href="/api/stripe/connect" className="text-sm font-medium text-blue-600 hover:underline">
                 Reconnect
               </a>
             </>
           ) : (
             <>
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- API route that redirects to Stripe, not a Next.js page */}
               <a
                 href="/api/stripe/connect"
                 className="inline-block bg-[#635BFF] text-white font-semibold text-sm px-5 py-2.5 rounded-lg hover:bg-[#5851ea] transition"
