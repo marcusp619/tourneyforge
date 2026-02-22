@@ -45,7 +45,8 @@ async function createOrganization(formData: FormData) {
   });
 
   revalidatePath("/dashboard");
-  redirect("/dashboard");
+  // Send new directors straight to settings so they can set their theme and logo immediately
+  redirect("/dashboard/settings?welcome=1");
 }
 
 export default function OnboardingPage() {

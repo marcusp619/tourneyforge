@@ -3,6 +3,21 @@ import { db, tenants, tournaments, teams, catches, species, registrations } from
 import { eq, and, count } from "drizzle-orm";
 import { calculateStandings } from "@tourneyforge/scoring";
 import type { ScoringInput } from "@tourneyforge/scoring";
+import { Redis } from "@upstash/redis";
+import { Ratelimit } from "@upstash/ratelimit";
+
+// 100 requests / 60s per API key — gracefully degrades if Redis is unconfigured
+function getRatelimiter(): Ratelimit | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  return new Ratelimit({
+    redis: new Redis({ url, token }),
+    limiter: Ratelimit.slidingWindow(100, "60 s"),
+    prefix: "tf:v1:rl",
+    analytics: false,
+  });
+}
 
 /**
  * Public API v1 — Enterprise plan only
@@ -44,6 +59,22 @@ v1Router.use("*", async (c, next) => {
 
   // Store tenant in context for downstream handlers
   c.set("tenant" as never, tenant);
+
+  // Rate limiting: 100 req/min per API key
+  const rl = getRatelimiter();
+  if (rl) {
+    const { success, limit, remaining, reset } = await rl.limit(apiKey);
+    c.header("X-RateLimit-Limit", String(limit));
+    c.header("X-RateLimit-Remaining", String(remaining));
+    c.header("X-RateLimit-Reset", String(reset));
+    if (!success) {
+      return c.json(
+        { error: { code: "RATE_LIMITED", message: "Too many requests. Limit: 100 per minute." } },
+        429
+      );
+    }
+  }
+
   return next();
 });
 
