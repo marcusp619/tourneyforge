@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import { themePresets } from "@tourneyforge/themes";
+import { getLogoUploadUrl, saveLogoUrl, saveThemeSettings } from "@/actions/settings";
 
-// Theme preset slugs available to all plans
 const PRESET_ORDER = ["classic", "coastal", "forest", "bold", "sport", "midnight"] as const;
+const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"] as const;
+type AllowedType = (typeof ALLOWED_TYPES)[number];
 
 function ColorSwatch({ color }: { color: string }) {
   return (
@@ -15,26 +17,91 @@ function ColorSwatch({ color }: { color: string }) {
   );
 }
 
-export function ThemeSettingsClient() {
-  const [selectedPreset, setSelectedPreset] = useState("classic");
-  const [primaryColor, setPrimaryColor] = useState("");
-  const [accentColor, setAccentColor] = useState("");
-  const [tagline, setTagline] = useState("");
+type Props = {
+  tenantSlug: string;
+  initialPreset: string;
+  initialPrimary: string | null;
+  initialAccent: string | null;
+  initialTagline: string | null;
+  initialLogoUrl: string | null;
+};
+
+export function ThemeSettingsClient({
+  tenantSlug,
+  initialPreset,
+  initialPrimary,
+  initialAccent,
+  initialTagline,
+  initialLogoUrl,
+}: Props) {
+  const [selectedPreset, setSelectedPreset] = useState(initialPreset || "classic");
+  const [primaryColor, setPrimaryColor] = useState(initialPrimary ?? "");
+  const [accentColor, setAccentColor] = useState(initialAccent ?? "");
+  const [tagline, setTagline] = useState(initialTagline ?? "");
+  const [logoUrl, setLogoUrl] = useState(initialLogoUrl ?? "");
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [isPending, startTransition] = useTransition();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const preset = themePresets[selectedPreset] ?? themePresets["classic"]!;
-
   const effectivePrimary = primaryColor || preset.primaryColor;
   const effectiveAccent = accentColor || preset.accentColor;
 
+  async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!ALLOWED_TYPES.includes(file.type as AllowedType)) {
+      setLogoError("Please choose a PNG, JPG, WebP, or SVG file.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setLogoError("File must be under 5 MB.");
+      return;
+    }
+
+    setLogoError("");
+    setLogoUploading(true);
+
+    try {
+      const { uploadUrl, publicUrl } = await getLogoUploadUrl(file.type as AllowedType);
+
+      const uploadRes = await fetch(uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+
+      if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.status}`);
+
+      await saveLogoUrl(publicUrl);
+      setLogoUrl(publicUrl);
+    } catch (err) {
+      setLogoError(err instanceof Error ? err.message : "Upload failed. Please try again.");
+    } finally {
+      setLogoUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   function handleSave() {
+    setSaveError("");
     startTransition(async () => {
-      // In production this would call PATCH /api/tenants/:id/theme
-      // For now, just simulate a save
-      await new Promise((r) => setTimeout(r, 500));
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      try {
+        await saveThemeSettings({
+          themePreset: selectedPreset,
+          primaryColor: primaryColor || null,
+          accentColor: accentColor || null,
+          tagline: tagline || null,
+        });
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2500);
+      } catch {
+        setSaveError("Failed to save. Please try again.");
+      }
     });
   }
 
@@ -46,7 +113,6 @@ export function ThemeSettingsClient() {
         <p className="text-sm text-gray-500 mb-5">
           Choose a base theme. You can override colors below.
         </p>
-
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {PRESET_ORDER.map((slug) => {
             const p = themePresets[slug]!;
@@ -84,7 +150,7 @@ export function ThemeSettingsClient() {
       <section className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-1">Color Overrides</h2>
         <p className="text-sm text-gray-500 mb-5">
-          Optionally override the preset colors with your brand colors.
+          Optionally override preset colors with your brand colors.
         </p>
         <div className="grid gap-5 sm:grid-cols-2">
           <div>
@@ -116,7 +182,7 @@ export function ThemeSettingsClient() {
       <section className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-1">Tagline</h2>
         <p className="text-sm text-gray-500 mb-4">
-          A short marketing line displayed on your public homepage hero section.
+          A short line displayed on your public homepage hero section.
         </p>
         <input type="text" value={tagline} onChange={(e) => setTagline(e.target.value)} placeholder="e.g. The Midwest's Premier Bass Tournament Series" maxLength={200} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         <p className="mt-1 text-xs text-gray-400">{tagline.length}/200</p>
@@ -126,34 +192,77 @@ export function ThemeSettingsClient() {
       <section className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-1">Logo</h2>
         <p className="text-sm text-gray-500 mb-4">
-          Upload your organization logo. Shown in the site header. PNG, JPG, or SVG, up to 5 MB.
+          Shown in your site header and on the tournament marketplace. PNG, JPG, WebP, or SVG — up to 5 MB.
         </p>
-        <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center">
-          <p className="text-4xl mb-3">🎣</p>
-          <p className="text-sm text-gray-500 mb-3">No logo uploaded yet</p>
-          <label className="inline-block cursor-pointer">
-            <span className="bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition">Choose File</span>
-            <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="sr-only" />
-          </label>
-        </div>
+
+        {logoUrl && (
+          <div className="mb-4 flex items-center gap-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={logoUrl}
+              alt="Current logo"
+              className="h-16 w-auto max-w-[200px] rounded-lg border border-gray-200 object-contain bg-gray-50 p-2"
+            />
+            <p className="text-xs text-gray-400">{tenantSlug}.tourneyforge.com</p>
+          </div>
+        )}
+
+        <label
+          className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-8 text-center transition cursor-pointer ${
+            logoUploading
+              ? "opacity-60 cursor-not-allowed border-gray-200"
+              : "border-gray-300 hover:border-blue-400 hover:bg-blue-50"
+          }`}
+        >
+          {logoUploading ? (
+            <p className="text-sm text-gray-500">Uploading…</p>
+          ) : (
+            <>
+              <p className="text-3xl mb-2">{logoUrl ? "🔄" : "📁"}</p>
+              <p className="text-sm text-gray-600 font-medium">
+                {logoUrl ? "Click to replace logo" : "Click to upload logo"}
+              </p>
+              <p className="text-xs text-gray-400 mt-1">PNG, JPG, WebP, SVG · max 5 MB</p>
+            </>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            className="sr-only"
+            disabled={logoUploading}
+            onChange={handleLogoChange}
+          />
+        </label>
+
+        {logoError && <p className="mt-2 text-sm text-red-600">{logoError}</p>}
       </section>
 
       {/* Live preview */}
-      <section className="rounded-xl p-6 mb-6 text-white" style={{ background: `linear-gradient(135deg, ${effectivePrimary}, ${effectiveAccent})` }}>
+      <section
+        className="rounded-xl p-6 mb-6 text-white"
+        style={{ background: `linear-gradient(135deg, ${effectivePrimary}, ${effectiveAccent})` }}
+      >
         <h2 className="font-bold mb-1">Live Preview</h2>
-        <p className="text-sm opacity-90">This is how your header gradient will look with the current colors.</p>
+        <p className="text-sm opacity-90">This is how your header gradient will look.</p>
         <div className="mt-3 inline-flex gap-3">
           <span className="text-xs font-semibold px-3 py-1 rounded-full bg-white/20">{preset.name} theme</span>
           {primaryColor && <span className="text-xs font-semibold px-3 py-1 rounded-full bg-white/20">Custom primary</span>}
         </div>
       </section>
 
-      {/* Save button */}
+      {/* Save */}
       <div className="flex items-center gap-4">
-        <button type="button" onClick={handleSave} disabled={isPending} className="bg-blue-600 text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-blue-700 transition disabled:opacity-60">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={isPending}
+          className="bg-blue-600 text-white font-semibold px-6 py-2.5 rounded-lg hover:bg-blue-700 transition disabled:opacity-60"
+        >
           {isPending ? "Saving…" : "Save Changes"}
         </button>
         {saved && <span className="text-sm text-green-600 font-medium">Changes saved!</span>}
+        {saveError && <span className="text-sm text-red-600">{saveError}</span>}
       </div>
     </>
   );

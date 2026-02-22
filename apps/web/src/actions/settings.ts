@@ -6,6 +6,8 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { Redis } from "@upstash/redis";
 import { SUBSCRIPTION_LIMITS } from "@tourneyforge/types";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 function getRedis(): Redis | null {
   const url = process.env.UPSTASH_REDIS_REST_URL;
@@ -80,6 +82,83 @@ export async function revokeApiKey() {
   await db
     .update(tenants)
     .set({ apiKey: null, updatedAt: new Date() })
+    .where(eq(tenants.id, tenant.id));
+
+  revalidatePath("/dashboard/settings");
+}
+
+/**
+ * Generate a presigned R2 URL for logo upload.
+ * Returns the upload URL (PUT to this) + the final public URL.
+ */
+export async function getLogoUploadUrl(
+  contentType: "image/png" | "image/jpeg" | "image/webp" | "image/svg+xml"
+): Promise<{ uploadUrl: string; publicUrl: string }> {
+  const { tenant } = await requireTenant();
+
+  const r2AccountId = process.env.R2_ACCOUNT_ID;
+  const r2Bucket = process.env.R2_BUCKET_NAME;
+  const r2AccessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const r2SecretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+
+  if (!r2AccountId || !r2Bucket || !r2AccessKeyId || !r2SecretAccessKey) {
+    throw new Error("Storage not configured — add R2 env vars to enable logo upload.");
+  }
+
+  const ext = contentType.split("/")[1]!.replace("svg+xml", "svg");
+  const key = `logos/${tenant.slug}-${Date.now()}.${ext}`;
+
+  const s3 = new S3Client({
+    region: "auto",
+    endpoint: `https://${r2AccountId}.r2.cloudflarestorage.com`,
+    credentials: { accessKeyId: r2AccessKeyId, secretAccessKey: r2SecretAccessKey },
+  });
+
+  const uploadUrl = await getSignedUrl(
+    s3,
+    new PutObjectCommand({ Bucket: r2Bucket, Key: key, ContentType: contentType }),
+    { expiresIn: 300 }
+  );
+
+  const publicUrl = `https://${r2Bucket}.${r2AccountId}.r2.cloudflarestorage.com/${key}`;
+  return { uploadUrl, publicUrl };
+}
+
+/**
+ * Persist a new logo URL after a successful R2 upload.
+ */
+export async function saveLogoUrl(logoUrl: string) {
+  const { tenant } = await requireTenant();
+
+  await db
+    .update(tenants)
+    .set({ logoUrl, updatedAt: new Date() })
+    .where(eq(tenants.id, tenant.id));
+
+  revalidatePath("/dashboard/settings");
+  revalidatePath("/dashboard");
+}
+
+/**
+ * Save theme preset + color overrides + tagline.
+ */
+export async function saveThemeSettings(settings: {
+  themePreset: string;
+  primaryColor: string | null;
+  accentColor: string | null;
+  tagline: string | null;
+}) {
+  const { tenant } = await requireTenant();
+
+  await db
+    .update(tenants)
+    .set({
+      themePreset: settings.themePreset,
+      primaryColor: settings.primaryColor || null,
+      accentColor: settings.accentColor || null,
+      tagline: settings.tagline || null,
+      updatedAt: new Date(),
+    })
     .where(eq(tenants.id, tenant.id));
 
   revalidatePath("/dashboard/settings");

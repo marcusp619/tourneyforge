@@ -2,6 +2,7 @@ import { requireTenant } from "@/lib/tenant";
 import { ThemeSettingsClient } from "./ThemeSettingsClient";
 import { updateCustomDomain, generateApiKey, revokeApiKey } from "@/actions/settings";
 import { SUBSCRIPTION_LIMITS } from "@tourneyforge/types";
+import Link from "next/link";
 
 export const metadata = { title: "Settings | Dashboard" };
 
@@ -11,8 +12,14 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
   active: { label: "Active", color: "#166534", bg: "#dcfce7" },
 };
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string>>;
+}) {
   const { tenant } = await requireTenant();
+  const params = await searchParams;
+  const isWelcome = params["welcome"] === "1";
 
   const stripeStatus = tenant.stripeAccountStatus ?? "not_connected";
   const statusCfg = STATUS_CONFIG[stripeStatus] ?? STATUS_CONFIG["not_connected"]!;
@@ -23,6 +30,24 @@ export default async function SettingsPage() {
 
   return (
     <div className="max-w-3xl">
+      {/* Welcome banner for new directors */}
+      {isWelcome && (
+        <div className="mb-6 bg-green-50 border border-green-200 rounded-xl p-5 flex items-start gap-4">
+          <span className="text-2xl">🎉</span>
+          <div>
+            <p className="font-semibold text-green-900">Welcome to TourneyForge!</p>
+            <p className="text-sm text-green-700 mt-0.5">
+              Your organization <strong>{tenant.name}</strong> is ready. Start by uploading your logo and choosing a theme below,
+              then{" "}
+              <Link href="/dashboard/tournaments/new" className="underline font-medium">
+                create your first tournament
+              </Link>
+              .
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
         <p className="text-gray-500 mt-1">
@@ -218,7 +243,14 @@ export default async function SettingsPage() {
           Customize how your public tournament site looks to visitors.
         </p>
       </div>
-      <ThemeSettingsClient />
+      <ThemeSettingsClient
+        tenantSlug={tenant.slug}
+        initialPreset={tenant.themePreset}
+        initialPrimary={tenant.primaryColor ?? null}
+        initialAccent={tenant.accentColor ?? null}
+        initialTagline={tenant.tagline ?? null}
+        initialLogoUrl={tenant.logoUrl ?? null}
+      />
     </div>
   );
 }
