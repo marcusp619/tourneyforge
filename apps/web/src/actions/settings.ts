@@ -5,6 +5,7 @@ import { db, tenants } from "@tourneyforge/db";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { Redis } from "@upstash/redis";
+import { SUBSCRIPTION_LIMITS } from "@tourneyforge/types";
 
 function getRedis(): Redis | null {
   const url = process.env.UPSTASH_REDIS_REST_URL;
@@ -46,6 +47,40 @@ export async function updateCustomDomain(formData: FormData) {
       // best-effort
     }
   }
+
+  revalidatePath("/dashboard/settings");
+}
+
+/**
+ * Generate a new API key for the current tenant (Enterprise only).
+ * A new random UUID is used as the key.
+ */
+export async function generateApiKey() {
+  const { tenant } = await requireTenant();
+  const limits = SUBSCRIPTION_LIMITS[tenant.plan];
+  if (!limits.apiAccess) {
+    throw new Error("API access requires the Enterprise plan");
+  }
+
+  const newKey = crypto.randomUUID();
+  await db
+    .update(tenants)
+    .set({ apiKey: newKey, updatedAt: new Date() })
+    .where(eq(tenants.id, tenant.id));
+
+  revalidatePath("/dashboard/settings");
+}
+
+/**
+ * Revoke (clear) the API key for the current tenant.
+ */
+export async function revokeApiKey() {
+  const { tenant } = await requireTenant();
+
+  await db
+    .update(tenants)
+    .set({ apiKey: null, updatedAt: new Date() })
+    .where(eq(tenants.id, tenant.id));
 
   revalidatePath("/dashboard/settings");
 }

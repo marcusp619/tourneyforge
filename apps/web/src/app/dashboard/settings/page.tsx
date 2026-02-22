@@ -1,6 +1,6 @@
 import { requireTenant } from "@/lib/tenant";
 import { ThemeSettingsClient } from "./ThemeSettingsClient";
-import { updateCustomDomain } from "@/actions/settings";
+import { updateCustomDomain, generateApiKey, revokeApiKey } from "@/actions/settings";
 import { SUBSCRIPTION_LIMITS } from "@tourneyforge/types";
 
 export const metadata = { title: "Settings | Dashboard" };
@@ -140,6 +140,74 @@ export default async function SettingsPage() {
             <code className="bg-gray-100 px-1.5 py-0.5 rounded">{tenant.customDomain}</code>.
             {" "}Save an empty value to remove the custom domain.
           </p>
+        )}
+      </section>
+
+      {/* Public API Access */}
+      <section className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Public API Access</h2>
+            <p className="text-sm text-gray-500">
+              Use your API key to query tournament data, leaderboards, and registrations
+              programmatically. Authenticate requests with the{" "}
+              <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">x-api-key</code> header.
+            </p>
+          </div>
+          {!limits.apiAccess && (
+            <span className="flex-shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-50 text-purple-700 mt-1">
+              Enterprise
+            </span>
+          )}
+        </div>
+
+        {limits.apiAccess ? (
+          <>
+            {tenant.apiKey ? (
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs font-medium text-gray-500 mb-1.5">Your API Key</p>
+                  <code className="block w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-mono text-gray-800 break-all">
+                    {tenant.apiKey}
+                  </code>
+                </div>
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  Keep this key secret. Anyone with it can read all your tournament data.
+                </p>
+                <div className="flex gap-3">
+                  <form action={generateApiKey}>
+                    <button
+                      type="submit"
+                      className="text-sm font-semibold px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+                    >
+                      Rotate Key
+                    </button>
+                  </form>
+                  <form action={revokeApiKey}>
+                    <button
+                      type="submit"
+                      className="text-sm font-semibold px-4 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition"
+                    >
+                      Revoke Key
+                    </button>
+                  </form>
+                </div>
+              </div>
+            ) : (
+              <form action={generateApiKey}>
+                <button
+                  type="submit"
+                  className="bg-blue-600 text-white font-semibold text-sm px-5 py-2.5 rounded-lg hover:bg-blue-700 transition"
+                >
+                  Generate API Key
+                </button>
+              </form>
+            )}
+          </>
+        ) : (
+          <div className="rounded-lg bg-purple-50 border border-purple-200 p-4 text-sm text-purple-800">
+            Public API access is available on the <strong>Enterprise</strong> plan.
+          </div>
         )}
       </section>
 

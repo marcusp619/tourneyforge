@@ -27,6 +27,8 @@ export const tenants = pgTable(
     // Stripe Connect
     stripeConnectedAccountId: text("stripe_connected_account_id"),
     stripeAccountStatus: text("stripe_account_status").notNull().default("not_connected"), // not_connected | pending | active
+    // Public API access (Enterprise plan)
+    apiKey: text("api_key").unique(), // null = no key generated
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

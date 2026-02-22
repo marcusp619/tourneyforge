@@ -121,6 +121,16 @@ export async function updateTournamentStatus(
     .set({ status, updatedAt: new Date() })
     .where(and(eq(tournaments.id, id), eq(tournaments.tenantId, tenant.id)));
 
+  // Fire SMS notifications for live/completed status changes (best-effort)
+  if (status === "active" || status === "completed") {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+    fetch(`${apiUrl}/api/notifications/tournament-status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tournamentId: id, tenantId: tenant.id, newStatus: status }),
+    }).catch((err) => console.error("[tournament-status] notification error:", err));
+  }
+
   revalidatePath(`/dashboard/tournaments/${id}`);
   revalidatePath("/dashboard/tournaments");
 }
