@@ -36,13 +36,20 @@ export default async function DashboardPage() {
       comingSoon: true,
     },
     {
-      icon: "💰",
-      label: "Payments",
-      description: "Connect Stripe and manage entry fees",
-      href: "/dashboard/payments",
-      cta: "Set Up Payments",
-      color: "#d97706",
-      comingSoon: true,
+      icon: "📊",
+      label: "Analytics",
+      description: "Registration trends, revenue, and catch analytics",
+      href: "/dashboard/analytics",
+      cta: "View Analytics",
+      color: "#0891b2",
+    },
+    {
+      icon: "🤝",
+      label: "Sponsor Marketplace",
+      description: "Find brands looking to sponsor fishing tournaments",
+      href: "/dashboard/marketplace",
+      cta: "Browse Sponsors",
+      color: "#7c3aed",
     },
   ];
 
