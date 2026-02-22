@@ -15,6 +15,8 @@ export interface Tenant {
   // Stripe Connect
   stripeConnectedAccountId: string | null;
   stripeAccountStatus: string;
+  // Public API access (Enterprise plan)
+  apiKey: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -10,6 +10,7 @@ export const users = pgTable("users", {
   firstName: text("first_name"),
   lastName: text("last_name"),
   clerkUserId: text("clerk_user_id").notNull().unique(),
+  phone: text("phone"), // E.164 format, e.g. +15551234567 — for SMS notifications
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
