@@ -6,6 +6,7 @@ import { eq, and, count } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { registerFormSchema, PLATFORM_FEE_BPS } from "@tourneyforge/validators";
 import Stripe from "stripe";
+import { sendRegistrationConfirmation } from "@/lib/email";
 
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -110,6 +111,23 @@ export async function createRegistration(
       status: "confirmed",
       paymentStatus: "paid", // free = no payment needed
     });
+
+    // Send confirmation email (best-effort — don't block the redirect)
+    if (user.email && !user.email.endsWith("@placeholder.com")) {
+      const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "tourneyforge.com";
+      const tournamentUrl = `https://${tenantSlug}.${rootDomain}/tournaments/${tournamentId}`;
+      const dateStr = tournament.startDate.toLocaleDateString("en-US", {
+        weekday: "long", month: "long", day: "numeric", year: "numeric",
+      });
+      sendRegistrationConfirmation({
+        to: user.email,
+        tenantName: tenant.name,
+        tournamentName: tournament.name,
+        teamName: team.name,
+        tournamentDate: dateStr,
+        tournamentUrl,
+      }).catch((err) => console.error("[registration] email error:", err));
+    }
 
     redirect(`/${tenantSlug}/tournaments/${tournamentId}/register/success`);
   }

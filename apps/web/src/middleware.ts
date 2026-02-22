@@ -1,10 +1,11 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { Redis } from "@upstash/redis";
 
 /**
  * Clerk Middleware + Tenant Resolution
  *
- * 1. Custom domain → Redis lookup (tenant_slug)
+ * 1. Custom domain → Redis lookup (`custom_domain:{host}` → tenantSlug)
  * 2. Subdomain → {slug}.tourneyforge.com
  * 3. Null → platform marketing site
  */
@@ -15,6 +16,13 @@ const isProtectedRoute = createRouteMatcher([
   "/admin(.*)",
 ]);
 
+function getRedis(): Redis | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  return new Redis({ url, token });
+}
+
 export default clerkMiddleware(async (auth, req) => {
   const url = req.nextUrl;
   const hostname = url.hostname;
@@ -24,31 +32,45 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.next();
   }
 
-  // Check if this is a tenant subdomain
-  // Format: {slug}.tourneyforge.com
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "tourneyforge.com";
 
-  if (hostname.endsWith(`.${rootDomain}`) && hostname !== `www.${rootDomain}`) {
-    const subdomain = hostname.replace(`.${rootDomain}`, "").replace(`www.${rootDomain}`, "");
+  // 1. Custom domain lookup via Redis
+  const isRootOrWww =
+    hostname === rootDomain ||
+    hostname === `www.${rootDomain}` ||
+    hostname === "localhost";
 
-    if (subdomain && subdomain !== "www") {
-      // This is a tenant subdomain - rewrite to tenant routes
-      const newUrl = new URL(`/${subdomain}${url.pathname}`, req.url);
-
-      // Add tenant slug header for downstream use
-      const requestHeaders = new Headers(req.headers);
-      requestHeaders.set("x-tenant-slug", subdomain);
-
-      return NextResponse.rewrite(newUrl, {
-        request: { headers: requestHeaders },
-      });
+  if (!isRootOrWww && !hostname.endsWith(`.${rootDomain}`)) {
+    // Not a subdomain of our root — treat as potential custom domain
+    const redis = getRedis();
+    if (redis) {
+      try {
+        const tenantSlug = await redis.get<string>(`custom_domain:${hostname}`);
+        if (tenantSlug) {
+          const newUrl = new URL(`/${tenantSlug}${url.pathname}`, req.url);
+          const requestHeaders = new Headers(req.headers);
+          requestHeaders.set("x-tenant-slug", tenantSlug);
+          return NextResponse.rewrite(newUrl, { request: { headers: requestHeaders } });
+        }
+      } catch {
+        // Redis unavailable — fall through to normal routing
+      }
     }
   }
 
-  // Custom domain lookup would go here (Redis)
-  // For now, skip custom domain resolution
+  // 2. Subdomain routing: {slug}.tourneyforge.com
+  if (hostname.endsWith(`.${rootDomain}`) && hostname !== `www.${rootDomain}`) {
+    const subdomain = hostname.replace(`.${rootDomain}`, "");
 
-  // Protect routes that require auth
+    if (subdomain && subdomain !== "www") {
+      const newUrl = new URL(`/${subdomain}${url.pathname}`, req.url);
+      const requestHeaders = new Headers(req.headers);
+      requestHeaders.set("x-tenant-slug", subdomain);
+      return NextResponse.rewrite(newUrl, { request: { headers: requestHeaders } });
+    }
+  }
+
+  // 3. Protect routes that require auth
   if (isProtectedRoute(req)) {
     await auth.protect();
   }

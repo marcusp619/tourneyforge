@@ -1,5 +1,7 @@
 import { requireTenant } from "@/lib/tenant";
 import { ThemeSettingsClient } from "./ThemeSettingsClient";
+import { updateCustomDomain } from "@/actions/settings";
+import { SUBSCRIPTION_LIMITS } from "@tourneyforge/types";
 
 export const metadata = { title: "Settings | Dashboard" };
 
@@ -15,6 +17,9 @@ export default async function SettingsPage() {
   const stripeStatus = tenant.stripeAccountStatus ?? "not_connected";
   const statusCfg = STATUS_CONFIG[stripeStatus] ?? STATUS_CONFIG["not_connected"]!;
   const isConnected = stripeStatus === "active";
+
+  const limits = SUBSCRIPTION_LIMITS[tenant.plan];
+  const canCustomDomain = limits.customDomain;
 
   return (
     <div className="max-w-3xl">
@@ -81,6 +86,61 @@ export default async function SettingsPage() {
           per transaction on the{" "}
           <span className="font-semibold capitalize">{tenant.plan}</span> plan.
         </p>
+      </section>
+
+      {/* Custom Domain */}
+      <section className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Custom Domain</h2>
+            <p className="text-sm text-gray-500">
+              Point your own domain (e.g. <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">tournaments.yourclub.com</code>) to your TourneyForge site.
+              Set a CNAME record pointing to <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">cname.tourneyforge.com</code>.
+            </p>
+          </div>
+          {!canCustomDomain && (
+            <span className="flex-shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 mt-1">
+              Pro Feature
+            </span>
+          )}
+        </div>
+
+        {canCustomDomain ? (
+          <form action={updateCustomDomain} className="flex gap-3 items-end">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="customDomain">
+                Domain
+              </label>
+              <input
+                id="customDomain"
+                name="customDomain"
+                type="text"
+                defaultValue={tenant.customDomain ?? ""}
+                placeholder="tournaments.yourclub.com"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <button
+              type="submit"
+              className="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition text-sm"
+            >
+              Save
+            </button>
+          </form>
+        ) : (
+          <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800">
+            Custom domains are available on the <strong>Pro</strong> and <strong>Enterprise</strong> plans.{" "}
+            <a href="#upgrade" className="underline font-medium">Upgrade your plan</a> to unlock this feature.
+          </div>
+        )}
+
+        {canCustomDomain && tenant.customDomain && (
+          <p className="mt-3 text-xs text-gray-500">
+            Current domain:{" "}
+            <code className="bg-gray-100 px-1.5 py-0.5 rounded">{tenant.customDomain}</code>.
+            {" "}Save an empty value to remove the custom domain.
+          </p>
+        )}
       </section>
 
       {/* Theme & appearance (client component) */}

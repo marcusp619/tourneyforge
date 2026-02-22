@@ -17,6 +17,7 @@
     "@tourneyforge/types": "workspace:*",
     "@tourneyforge/validators": "workspace:*",
     "hono": "^4.6.15",
+    "resend": "^6.9.2",
     "stripe": "^17.5.0",
     "zod": "^3.23.8"
   },
