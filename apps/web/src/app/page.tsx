@@ -91,7 +91,7 @@ export default function HomePage() {
       {/* Pricing */}
       <section className="max-w-6xl mx-auto px-6 py-20">
         <h2 className="text-2xl font-bold text-center mb-3">Simple, transparent pricing</h2>
-        <p className="text-center text-muted-foreground mb-12">Start free. Upgrade when you're ready.</p>
+        <p className="text-center text-muted-foreground mb-12">Start free. Upgrade when you&apos;re ready.</p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {plans.map((plan) => (
             <Card key={plan.name} className={plan.highlight ? "border-primary shadow-md" : ""}>
