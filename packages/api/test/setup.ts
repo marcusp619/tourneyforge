@@ -1,9 +1,15 @@
 /**
  * Bun test preload — runs before every test file in packages/api.
  *
- * Setting DATABASE_URL here ensures the @tourneyforge/db module can be
- * loaded for Bun's named-export validation without throwing. The actual
- * `db` instance is replaced at runtime by mock.module() in each test file,
- * so no real database connection is ever made during tests.
+ * @tourneyforge/db throws at import time if DATABASE_URL is not set.
+ * Bun validates named exports (e.g. `species`) against the real module
+ * before applying mock.module() substitutions, so the module must be
+ * loadable even though NO real database connection is ever made.
+ *
+ * The value is intentionally fake — `postgres()` is lazy and never
+ * dials a server. The `db` instance is replaced by mock.module() in
+ * each test file before any query is attempted.
+ *
+ * No Docker, no local Postgres, no external services required.
  */
-process.env["DATABASE_URL"] = "postgresql://test:test@localhost:5432/test_db";
+process.env["DATABASE_URL"] = "postgresql://mock:mock@mock.invalid/mock";
