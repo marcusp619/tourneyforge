@@ -2,21 +2,22 @@ import { requireTenant } from "@/lib/tenant";
 import { db, tournaments } from "@tourneyforge/db";
 import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { updateTournamentStatus } from "@/actions/tournaments";
+import { Plus, Trophy } from "lucide-react";
 
-const STATUS_LABELS: Record<string, { label: string; bg: string; text: string }> = {
-  draft: { label: "Draft", bg: "#fef9c3", text: "#854d0e" },
-  open: { label: "Open", bg: "#dcfce7", text: "#166534" },
-  active: { label: "Live", bg: "#dbeafe", text: "#1e40af" },
-  completed: { label: "Completed", bg: "#f3f4f6", text: "#6b7280" },
+const STATUS: Record<string, { label: string; variant: "success" | "info" | "warning" | "secondary" }> = {
+  draft:     { label: "Draft",     variant: "secondary" },
+  open:      { label: "Open",      variant: "success" },
+  active:    { label: "Live",      variant: "info" },
+  completed: { label: "Completed", variant: "secondary" },
 };
 
 function formatDate(date: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(date);
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(date);
 }
 
 export default async function TournamentsPage() {
@@ -29,78 +30,72 @@ export default async function TournamentsPage() {
     .orderBy(desc(tournaments.createdAt));
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
+    <div className="max-w-5xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Tournaments</h1>
-          <p className="text-gray-500 mt-1">Manage your fishing tournaments</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Tournaments</h1>
+          <p className="text-muted-foreground mt-0.5">Manage your fishing tournaments</p>
         </div>
-        <Link
-          href="/dashboard/tournaments/new"
-          className="bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-        >
-          + New Tournament
-        </Link>
+        <Button asChild>
+          <Link href="/dashboard/tournaments/new">
+            <Plus className="h-4 w-4" /> New Tournament
+          </Link>
+        </Button>
       </div>
 
       {allTournaments.length === 0 ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-16 text-center">
-          <p className="text-4xl mb-4">🏆</p>
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">No tournaments yet</h2>
-          <p className="text-gray-500 mb-6">Create your first tournament to get started.</p>
-          <Link
-            href="/dashboard/tournaments/new"
-            className="bg-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-lg hover:bg-blue-700 transition"
-          >
-            Create Tournament
-          </Link>
-        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <Trophy className="h-10 w-10 text-muted-foreground mb-4" />
+            <CardTitle className="mb-2">No tournaments yet</CardTitle>
+            <CardDescription className="mb-6">Create your first tournament to get started.</CardDescription>
+            <Button asChild>
+              <Link href="/dashboard/tournaments/new">
+                <Plus className="h-4 w-4" /> Create Tournament
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-6 py-3 font-semibold text-gray-600">Name</th>
-                <th className="text-left px-6 py-3 font-semibold text-gray-600">Date</th>
-                <th className="text-left px-6 py-3 font-semibold text-gray-600">Status</th>
-                <th className="text-left px-6 py-3 font-semibold text-gray-600">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {allTournaments.map((t) => {
-                const s = STATUS_LABELS[t.status] ?? STATUS_LABELS.draft!;
+                const s = STATUS[t.status] ?? STATUS.draft!;
                 return (
-                  <tr key={t.id} className="hover:bg-gray-50 transition">
-                    <td className="px-6 py-4">
-                      <Link
-                        href={`/dashboard/tournaments/${t.id}`}
-                        className="font-medium text-gray-900 hover:text-blue-600 transition"
-                      >
-                        {t.name}
-                      </Link>
-                      {t.description && (
-                        <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">
-                          {t.description}
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">{formatDate(t.startDate)}</td>
-                    <td className="px-6 py-4">
-                      <span
-                        className="text-xs font-semibold px-2.5 py-1 rounded-full"
-                        style={{ backgroundColor: s.bg, color: s.text }}
-                      >
-                        {s.label}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
+                  <TableRow key={t.id}>
+                    <TableCell>
+                      <div>
                         <Link
                           href={`/dashboard/tournaments/${t.id}`}
-                          className="text-blue-600 hover:underline font-medium"
+                          className="font-medium hover:underline"
                         >
-                          Manage
+                          {t.name}
                         </Link>
+                        {t.description && (
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                            {t.description}
+                          </p>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{formatDate(t.startDate)}</TableCell>
+                    <TableCell>
+                      <Badge variant={s.variant}>{s.label}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button asChild variant="ghost" size="sm">
+                          <Link href={`/dashboard/tournaments/${t.id}`}>Manage</Link>
+                        </Button>
                         {t.status === "draft" && (
                           <form
                             action={async () => {
@@ -108,22 +103,19 @@ export default async function TournamentsPage() {
                               await updateTournamentStatus(t.id, "open");
                             }}
                           >
-                            <button
-                              type="submit"
-                              className="text-green-600 hover:underline font-medium"
-                            >
+                            <Button variant="outline" size="sm" type="submit">
                               Publish
-                            </button>
+                            </Button>
                           </form>
                         )}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </Card>
       )}
     </div>
   );

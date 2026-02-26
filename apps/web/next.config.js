@@ -6,15 +6,7 @@ const nextConfig = {
     "@tourneyforge/validators",
     "@tourneyforge/scoring",
     "@tourneyforge/themes",
-    "@tourneyforge/ui",
-    "tamagui",
-    "@tamagui/core",
-    "@tamagui/config-node",
-    "react-native-web",
   ],
-  experimental: {
-    optimizePackageImports: ["@tourneyforge/ui"],
-  },
 };
 
 module.exports = nextConfig;
