@@ -1,6 +1,7 @@
 import { db, tournaments, tenants } from "@tourneyforge/db";
 import { eq, or, desc } from "drizzle-orm";
 import Link from "next/link";
+import Image from "next/image";
 
 export const metadata = { title: "Tournament Marketplace | TourneyForge" };
 
@@ -142,7 +143,7 @@ function TournamentCard({ tournament: t }: { tournament: TournamentRow }) {
         {/* Club */}
         <div className="flex items-center gap-2 mb-3">
           {t.tenantLogoUrl ? (
-            <img src={t.tenantLogoUrl} alt={t.tenantName} className="w-6 h-6 rounded object-cover" />
+            <Image src={t.tenantLogoUrl} alt={t.tenantName} width={24} height={24} className="w-6 h-6 rounded object-cover" />
           ) : (
             <div
               className="w-6 h-6 rounded flex items-center justify-center text-white text-xs font-bold"

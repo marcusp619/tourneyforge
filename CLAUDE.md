@@ -5,13 +5,21 @@ TourneyForge is a multi-tenant SaaS platform for fishing tournament management. 
 
 ## Development Status
 
-**Current Phase:** Phase 1 — Tenant Sites & Theming
+**Current Phase:** Complete through Phase 7
 
 **Completed:**
 - ✅ Phase 0: Foundation (monorepo, database, auth, CI/CD, seed data)
+- ✅ Phase 1: Tenant Sites & Theming (subdomain routing, theme engine, logo upload)
+- ✅ Phase 2: Tournament management, scoring formats, species, divisions
+- ✅ Phase 3: Registration + Stripe Connect payments
+- ✅ Phase 4: Live tournaments, catch submission (mobile), real-time leaderboards
+- ✅ Phase 5: Mobile app polish, Clerk auth, EAS build config
+- ✅ Phase 6: Custom domains, sponsors, analytics, email notifications
+- ✅ Phase 7: Public API v1, AI catch verification (Claude Haiku), marketplace, SMS
 
-**In Progress:**
-- 🚧 Phase 1: Tenant Sites & Theming
+**UI Stack:**
+- Web dashboard and marketing site use **shadcn/ui** + Tailwind CSS v4
+- Mobile app uses **Tamagui** via `packages/ui`
 
 ---
 
@@ -197,13 +205,13 @@ Plan is stored on `tenants.plan` enum. Feature gating is enforced in the API mid
 
 ## Development Phases
 - **Phase 0** ✅ COMPLETE: Monorepo scaffold, DB schema, auth (Clerk), API stubs, CI/CD, seed data
-- **Phase 1** 🚧 IN PROGRESS: Theming engine, tenant sites, subdomain routing, logo upload
-- **Phase 2**: Tournament management, scoring formats, species, divisions
-- **Phase 3**: Registration + Stripe Connect payments
-- **Phase 4**: Live tournament, catch submission (mobile), real-time leaderboards
-- **Phase 5**: Mobile app polish, App Store / Play Store release
-- **Phase 6**: Custom domains, sponsors, analytics, SMS
-- **Phase 7**: Public API, marketplace, AI catch verification
+- **Phase 1** ✅ COMPLETE: Theming engine, tenant sites, subdomain routing, logo upload
+- **Phase 2** ✅ COMPLETE: Tournament management, scoring formats, species, divisions
+- **Phase 3** ✅ COMPLETE: Registration + Stripe Connect payments
+- **Phase 4** ✅ COMPLETE: Live tournament, catch submission (mobile), real-time leaderboards
+- **Phase 5** ✅ COMPLETE: Mobile app polish, Clerk auth, EAS build config
+- **Phase 6** ✅ COMPLETE: Custom domains, sponsors, analytics, SMS notifications
+- **Phase 7** ✅ COMPLETE: Public API v1, marketplace, AI catch verification (Claude Haiku)
 
 ---
 

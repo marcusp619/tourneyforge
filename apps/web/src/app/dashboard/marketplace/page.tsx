@@ -2,6 +2,7 @@ import { requireTenant } from "@/lib/tenant";
 import { db, marketplaceSponsors } from "@tourneyforge/db";
 import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
+import Image from "next/image";
 
 export const metadata = { title: "Sponsor Marketplace | Dashboard" };
 
@@ -93,9 +94,11 @@ export default async function MarketplaceDashboardPage() {
                 {/* Logo + name */}
                 <div className="flex items-center gap-3 mb-3">
                   {sponsor.logoUrl ? (
-                    <img
+                    <Image
                       src={sponsor.logoUrl}
                       alt={sponsor.name}
+                      width={48}
+                      height={48}
                       className="w-12 h-12 rounded-lg object-contain border border-gray-100 bg-gray-50"
                     />
                   ) : (
