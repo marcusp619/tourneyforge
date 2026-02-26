@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "start": "bun run src/index.ts",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "test": "bun test --preload ./test/setup.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

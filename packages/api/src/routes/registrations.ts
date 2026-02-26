@@ -12,6 +12,10 @@ registrationRouter.get(
   zValidator("query", z.object({ tournamentId: z.string().uuid() })),
   async (c) => {
     const { tournamentId } = c.req.valid("query");
+    const tenantId = c.req.header("x-tenant-id");
+    if (!tenantId) {
+      return c.json({ error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } }, 400);
+    }
 
     const regs = await db
       .select({
@@ -26,7 +30,7 @@ registrationRouter.get(
       .from(registrations)
       .innerJoin(teams, eq(teams.id, registrations.teamId))
       .innerJoin(users, eq(users.id, teams.captainId))
-      .where(eq(registrations.tournamentId, tournamentId));
+      .where(and(eq(registrations.tournamentId, tournamentId), eq(registrations.tenantId, tenantId)));
 
     return c.json({ data: regs });
   }
@@ -38,12 +42,17 @@ registrationRouter.get(
   zValidator("query", z.object({ tournamentId: z.string().uuid() })),
   async (c) => {
     const { tournamentId } = c.req.valid("query");
+    const tenantId = c.req.header("x-tenant-id");
+    if (!tenantId) {
+      return c.json({ error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } }, 400);
+    }
     const result = await db
       .select({ value: count() })
       .from(registrations)
       .where(
         and(
           eq(registrations.tournamentId, tournamentId),
+          eq(registrations.tenantId, tenantId),
           eq(registrations.status, "confirmed")
         )
       );
@@ -65,11 +74,15 @@ registrationRouter.patch(
   async (c) => {
     const id = c.req.param("id");
     const body = c.req.valid("json");
+    const tenantId = c.req.header("x-tenant-id");
+    if (!tenantId) {
+      return c.json({ error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } }, 400);
+    }
 
     const [updated] = await db
       .update(registrations)
       .set({ ...body, updatedAt: new Date() })
-      .where(eq(registrations.id, id))
+      .where(and(eq(registrations.id, id), eq(registrations.tenantId, tenantId)))
       .returning();
 
     if (!updated) {
