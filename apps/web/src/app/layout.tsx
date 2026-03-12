@@ -7,16 +7,22 @@ export const metadata: Metadata = {
   description: "Professional fishing tournament management platform",
 };
 
+const LOCAL_DEV = process.env.LOCAL_DEV === "true";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <ClerkProvider>
-      <html lang="en">
-        <body>{children}</body>
-      </html>
-    </ClerkProvider>
+  const content = (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
   );
+
+  if (LOCAL_DEV) {
+    return content;
+  }
+
+  return <ClerkProvider>{content}</ClerkProvider>;
 }
