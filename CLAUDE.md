@@ -215,29 +215,46 @@ Plan is stored on `tenants.plan` enum. Feature gating is enforced in the API mid
 
 ---
 
-## Recent Changes (Phase 0 Completion)
+## Recent Changes
 
-### Auth Integration (Clerk)
-- Multi-tenant auth with organization support
-- Middleware with tenant resolution via subdomain
-- Sign-in / Sign-up flows
-- Protected dashboard routes
+### Security: Tenant Scope Enforcement (API Routes)
+All catches and registrations endpoints now require `x-tenant-id` header and
+scope every DB operation to that tenant. Previously `POST /api/catches` accepted
+any `tournamentId` without validating tenant ownership.
 
-### CI/CD
-- GitHub Actions workflow for type checking, linting, and testing
-- Runs on all PRs and pushes to main/develop branches
+Fixed routes:
+- `GET|POST /api/catches` — `packages/api/src/routes/catches.ts`
+- `PATCH /api/catches/:id/verify` — scoped update to tenant
+- `DELETE /api/catches/:id` — scoped delete to tenant
+- `GET|GET /count|PATCH /api/registrations` — `packages/api/src/routes/registrations.ts`
 
-### Seed Data
-- `packages/db/src/seed.ts` creates realistic test data:
-  - 3 tenants (Midwest Bass Trail, Carolina Kayak Fishing, Lake Norman Bass Club)
-  - Sample users (director, angler, admin)
-  - Tournament templates
-  - Scoring formats
+### API Test Suite
+Added Bun test suite covering catches and registrations routes (28 tests).
+No Docker or local Postgres needed — `@tourneyforge/db` is mocked via `mock.module`.
 
-### Environment Setup
-Created `.env.example` files in:
-- `apps/web/.env.local.example`
-- `packages/api/.env.example`
-- `packages/db/.env.example`
+- `packages/api/test/catches.test.ts` — 16 tests
+- `packages/api/test/registrations.test.ts` — 12 tests
+- `packages/api/test/setup.ts` — preload sets dummy DATABASE_URL for Bun validation
+- `packages/api/bunfig.toml` — wires preload into `bun test`
+- `packages/api/package.json` — added `"test"` script
+
+Run with: `cd packages/api && bun test`
+
+### Known Gaps (from quality audit — prioritized backlog)
+**High** (done ✅):
+- ~~Tenant scope gap in catches/registrations routes~~
+- ~~Zero API test coverage~~
+
+**Medium** (next up):
+- Missing `error.tsx` / `not-found.tsx` in web app
+- Mobile catch submission has no real Expo `ImagePicker` (uses text input for `photoUrl`)
+- Stripe webhook has no duplicate-event protection; email failures silently swallowed
+- CI only runs 4 scoring tests — no API/web/mobile coverage
+
+**Low**:
+- Scoring engine edge cases not tested (ties, dead fish penalties, zero catches)
+- Marketplace sponsor inquiry is `mailto:` only — no in-app form
+- Public tenant site missing results archive, about/rules pages
+- No soft deletes / audit trail anywhere
 
 ---
