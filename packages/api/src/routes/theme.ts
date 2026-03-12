@@ -68,25 +68,31 @@ themeRouter.post(
     const r2Bucket = process.env.R2_BUCKET_NAME;
     const r2AccessKeyId = process.env.R2_ACCESS_KEY_ID;
     const r2SecretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+    // R2_ENDPOINT overrides the Cloudflare endpoint for local dev (e.g. MinIO)
+    const r2Endpoint = process.env.R2_ENDPOINT;
 
-    if (!r2AccountId || !r2Bucket || !r2AccessKeyId || !r2SecretAccessKey) {
+    if (!r2Bucket || !r2AccessKeyId || !r2SecretAccessKey || (!r2AccountId && !r2Endpoint)) {
       return c.json(
         { error: { code: "MISCONFIGURED", message: "Storage not configured" } },
         503
       );
     }
 
-    // Use AWS SDK v3 S3 client (R2 is S3-compatible)
+    // Use AWS SDK v3 S3 client (R2 and MinIO are both S3-compatible)
     const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
     const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
 
+    const endpoint = r2Endpoint ?? `https://${r2AccountId!}.r2.cloudflarestorage.com`;
+
     const s3 = new S3Client({
       region: "auto",
-      endpoint: `https://${r2AccountId}.r2.cloudflarestorage.com`,
+      endpoint,
       credentials: {
         accessKeyId: r2AccessKeyId,
         secretAccessKey: r2SecretAccessKey,
       },
+      // Required for path-style access used by MinIO
+      forcePathStyle: !!r2Endpoint,
     });
 
     const command = new PutObjectCommand({
@@ -97,8 +103,10 @@ themeRouter.post(
 
     const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 300 }); // 5 min
 
-    // Public URL after upload (assumes public bucket or CDN)
-    const publicUrl = `https://${r2Bucket}.${r2AccountId}.r2.cloudflarestorage.com/${key}`;
+    // Public URL after upload
+    // R2_PUBLIC_URL can be set explicitly (e.g. http://localhost:9000/tourneyforge for MinIO)
+    const r2PublicBase = process.env.R2_PUBLIC_URL ?? `https://${r2Bucket}.${r2AccountId!}.r2.cloudflarestorage.com`;
+    const publicUrl = `${r2PublicBase}/${key}`;
 
     return c.json({ data: { uploadUrl, key, publicUrl } });
   }
