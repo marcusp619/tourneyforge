@@ -1,14 +1,19 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { Redis } from "@upstash/redis";
 
 /**
  * Clerk Middleware + Tenant Resolution
  *
  * 1. Custom domain → Redis lookup (`custom_domain:{host}` → tenantSlug)
- * 2. Subdomain → {slug}.tourneyforge.com
+ * 2. Subdomain → {slug}.tourneyforge.com  (or {slug}.localhost in local dev)
  * 3. Null → platform marketing site
+ *
+ * LOCAL_DEV=true bypasses Clerk auth enforcement so the app works without
+ * real Clerk keys.  Tenant routing via *.localhost still works.
  */
+
+const LOCAL_DEV = process.env.LOCAL_DEV === "true";
 
 // Protected routes that require auth
 const isProtectedRoute = createRouteMatcher([
@@ -23,25 +28,34 @@ function getRedis(): Redis | null {
   return new Redis({ url, token });
 }
 
-export default clerkMiddleware(async (auth, req) => {
+/**
+ * Resolve tenant slug and inject x-tenant-slug header.
+ * Returns a rewritten response when a tenant is resolved, or null to continue.
+ */
+async function resolveTenant(req: NextRequest): Promise<NextResponse | null> {
   const url = req.nextUrl;
   const hostname = url.hostname;
-
-  // Skip for API routes and static assets
-  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/_next/") || url.pathname.startsWith("/static")) {
-    return NextResponse.next();
-  }
-
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "tourneyforge.com";
 
-  // 1. Custom domain lookup via Redis
+  // *.localhost — local dev subdomain routing (e.g. demo.localhost)
+  if (hostname.endsWith(".localhost")) {
+    const subdomain = hostname.replace(/\.localhost$/, "");
+    if (subdomain && subdomain !== "www") {
+      const newUrl = new URL(`/${subdomain}${url.pathname}`, req.url);
+      const requestHeaders = new Headers(req.headers);
+      requestHeaders.set("x-tenant-slug", subdomain);
+      return NextResponse.rewrite(newUrl, { request: { headers: requestHeaders } });
+    }
+    return null;
+  }
+
   const isRootOrWww =
     hostname === rootDomain ||
     hostname === `www.${rootDomain}` ||
     hostname === "localhost";
 
+  // Custom domain lookup via Redis
   if (!isRootOrWww && !hostname.endsWith(`.${rootDomain}`)) {
-    // Not a subdomain of our root — treat as potential custom domain
     const redis = getRedis();
     if (redis) {
       try {
@@ -58,10 +72,9 @@ export default clerkMiddleware(async (auth, req) => {
     }
   }
 
-  // 2. Subdomain routing: {slug}.tourneyforge.com
+  // Subdomain routing: {slug}.tourneyforge.com
   if (hostname.endsWith(`.${rootDomain}`) && hostname !== `www.${rootDomain}`) {
     const subdomain = hostname.replace(`.${rootDomain}`, "");
-
     if (subdomain && subdomain !== "www") {
       const newUrl = new URL(`/${subdomain}${url.pathname}`, req.url);
       const requestHeaders = new Headers(req.headers);
@@ -70,8 +83,27 @@ export default clerkMiddleware(async (auth, req) => {
     }
   }
 
-  // 3. Protect routes that require auth
-  if (isProtectedRoute(req)) {
+  return null;
+}
+
+export default clerkMiddleware(async (auth, req) => {
+  const url = req.nextUrl;
+
+  // Skip for API routes and static assets
+  if (
+    url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/_next/") ||
+    url.pathname.startsWith("/static")
+  ) {
+    return NextResponse.next();
+  }
+
+  // Resolve tenant subdomain / custom domain
+  const tenantResponse = await resolveTenant(req);
+  if (tenantResponse) return tenantResponse;
+
+  // Protect routes that require auth (skipped in LOCAL_DEV mode)
+  if (!LOCAL_DEV && isProtectedRoute(req)) {
     await auth.protect();
   }
 

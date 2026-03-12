@@ -13,6 +13,10 @@ catchRouter.get(
   zValidator("query", z.object({ tournamentId: z.string().uuid() })),
   async (c) => {
     const { tournamentId } = c.req.valid("query");
+    const tenantId = c.req.header("x-tenant-id");
+    if (!tenantId) {
+      return c.json({ error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } }, 400);
+    }
 
     const rows = await db
       .select({
@@ -36,7 +40,7 @@ catchRouter.get(
       .from(catches)
       .innerJoin(teams, eq(teams.id, catches.teamId))
       .innerJoin(species, eq(species.id, catches.speciesId))
-      .where(eq(catches.tournamentId, tournamentId))
+      .where(and(eq(catches.tournamentId, tournamentId), eq(catches.tenantId, tenantId)))
       .orderBy(catches.timestamp);
 
     return c.json({ data: rows });
@@ -49,12 +53,16 @@ catchRouter.post(
   zValidator("json", catchSubmitSchema),
   async (c) => {
     const body = c.req.valid("json");
+    const tenantId = c.req.header("x-tenant-id");
+    if (!tenantId) {
+      return c.json({ error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } }, 400);
+    }
 
-    // Verify tournament is active
+    // Verify tournament is active AND belongs to this tenant
     const [tournament] = await db
       .select({ status: tournaments.status, tenantId: tournaments.tenantId })
       .from(tournaments)
-      .where(eq(tournaments.id, body.tournamentId))
+      .where(and(eq(tournaments.id, body.tournamentId), eq(tournaments.tenantId, tenantId)))
       .limit(1);
 
     if (!tournament) {
@@ -109,6 +117,10 @@ catchRouter.patch(
   async (c) => {
     const id = c.req.param("id");
     const { verified } = c.req.valid("json");
+    const tenantId = c.req.header("x-tenant-id");
+    if (!tenantId) {
+      return c.json({ error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } }, 400);
+    }
 
     const [updated] = await db
       .update(catches)
@@ -116,7 +128,7 @@ catchRouter.patch(
         verified: verified ? "true" : "false",
         verifiedAt: verified ? new Date() : null,
       })
-      .where(eq(catches.id, id))
+      .where(and(eq(catches.id, id), eq(catches.tenantId, tenantId)))
       .returning();
 
     if (!updated) {
@@ -130,10 +142,14 @@ catchRouter.patch(
 // DELETE /api/catches/:id — director removes a catch
 catchRouter.delete("/:id", async (c) => {
   const id = c.req.param("id");
+  const tenantId = c.req.header("x-tenant-id");
+  if (!tenantId) {
+    return c.json({ error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } }, 400);
+  }
 
   const [deleted] = await db
     .delete(catches)
-    .where(eq(catches.id, id))
+    .where(and(eq(catches.id, id), eq(catches.tenantId, tenantId)))
     .returning({ id: catches.id });
 
   if (!deleted) {
