@@ -12,6 +12,8 @@ import {
   Store,
 } from "lucide-react";
 
+const LOCAL_DEV = process.env.LOCAL_DEV === "true";
+
 const navItems = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
   { href: "/dashboard/tournaments", label: "Tournaments", icon: Trophy },
@@ -22,8 +24,10 @@ const navItems = [
 ];
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
+  if (!LOCAL_DEV) {
+    const { userId } = await auth();
+    if (!userId) redirect("/sign-in");
+  }
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -55,8 +59,16 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <Separator />
         <div className="p-3">
           <div className="flex items-center gap-3 px-3 py-2">
-            <UserButton afterSignOutUrl="/" />
-            <span className="text-sm text-muted-foreground">Account</span>
+            {LOCAL_DEV ? (
+              <span className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded font-medium">
+                Local Dev
+              </span>
+            ) : (
+              <>
+                <UserButton afterSignOutUrl="/" />
+                <span className="text-sm text-muted-foreground">Account</span>
+              </>
+            )}
           </div>
         </div>
       </aside>
