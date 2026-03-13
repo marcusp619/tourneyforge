@@ -245,11 +245,11 @@ Run with: `cd packages/api && bun test`
 - ~~Tenant scope gap in catches/registrations routes~~
 - ~~Zero API test coverage~~
 
-**Medium** (next up):
-- Missing `error.tsx` / `not-found.tsx` in web app
-- Mobile catch submission has no real Expo `ImagePicker` (uses text input for `photoUrl`)
-- Stripe webhook has no duplicate-event protection; email failures silently swallowed
-- CI only runs 4 scoring tests — no API/web/mobile coverage
+**Medium** (done ✅):
+- ~~Missing `error.tsx` / `not-found.tsx` in web app~~ — added global + dashboard error/not-found pages
+- ~~Mobile catch submission has no real Expo `ImagePicker` (uses text input for `photoUrl`)~~ — replaced with `expo-image-picker` (camera + library)
+- ~~Stripe webhook has no duplicate-event protection; email failures silently swallowed~~ — Redis idempotency key (24h TTL, nx), structured email error return
+- ~~CI only runs 4 scoring tests — no API/web/mobile coverage~~ — split into `test-scoring` + `test-api` jobs
 
 **Low**:
 - Scoring engine edge cases not tested (ties, dead fish penalties, zero catches)

@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  View, Text, TextInput, ScrollView, TouchableOpacity,
+  View, Text, TextInput, ScrollView, TouchableOpacity, Image,
   StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "@clerk/expo";
 import * as Location from "expo-location";
+import * as ImagePicker from "expo-image-picker";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -35,6 +36,9 @@ export default function SubmitCatchScreen() {
   const [locating, setLocating] = useState(false);
   const [latitude, setLatitude] = useState<string | null>(null);
   const [longitude, setLongitude] = useState<string | null>(null);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Load species list
@@ -72,6 +76,80 @@ export default function SubmitCatchScreen() {
     }
   }, []);
 
+  const pickPhoto = useCallback(async (source: "camera" | "library") => {
+    const permissionResult =
+      source === "camera"
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      Alert.alert(
+        "Permission Required",
+        source === "camera"
+          ? "Camera access is required to take a photo."
+          : "Photo library access is required to select a photo."
+      );
+      return;
+    }
+
+    const result =
+      source === "camera"
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ["images"],
+            quality: 0.7,
+            allowsEditing: true,
+            aspect: [4, 3],
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ["images"],
+            quality: 0.7,
+            allowsEditing: true,
+            aspect: [4, 3],
+          });
+
+    if (result.canceled || !result.assets[0]) return;
+
+    const asset = result.assets[0];
+    setPhotoUri(asset.uri);
+    setPhotoUrl(null); // reset previous upload
+
+    // Upload photo
+    setUploadingPhoto(true);
+    try {
+      const token = await getToken();
+      const formData = new FormData();
+      formData.append("file", {
+        uri: asset.uri,
+        name: asset.fileName ?? "catch.jpg",
+        type: asset.mimeType ?? "image/jpeg",
+      } as unknown as Blob);
+
+      const uploadRes = await fetch(`${API_URL}/api/uploads/catch-photo`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+
+      if (uploadRes.ok) {
+        const data = (await uploadRes.json()) as { url?: string };
+        if (data.url) setPhotoUrl(data.url);
+      }
+      // If upload fails we still allow submission without a remote URL
+    } catch {
+      // best effort — photo submission can proceed without upload
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }, [getToken]);
+
+  const showPhotoPicker = useCallback(() => {
+    Alert.alert("Add Photo", "Choose a photo source", [
+      { text: "Camera", onPress: () => pickPhoto("camera") },
+      { text: "Photo Library", onPress: () => pickPhoto("library") },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }, [pickPhoto]);
+
   const handleSubmit = useCallback(async () => {
     if (!tournamentId || !teamId || !speciesId) {
       Alert.alert("Missing Fields", "Please fill in tournament ID, team, and species.");
@@ -103,6 +181,7 @@ export default function SubmitCatchScreen() {
           length,
           latitude: latitude ?? undefined,
           longitude: longitude ?? undefined,
+          photoUrl: photoUrl ?? undefined,
         }),
       });
 
@@ -117,6 +196,7 @@ export default function SubmitCatchScreen() {
           onPress: () => {
             setWeightLbs(""); setWeightOz(""); setLengthIn("");
             setSpeciesId(""); setLatitude(null); setLongitude(null);
+            setPhotoUri(null); setPhotoUrl(null);
           },
         },
       ]);
@@ -125,7 +205,7 @@ export default function SubmitCatchScreen() {
     } finally {
       setSubmitting(false);
     }
-  }, [tournamentId, teamId, speciesId, weightLbs, weightOz, lengthIn, latitude, longitude, getToken]);
+  }, [tournamentId, teamId, speciesId, weightLbs, weightOz, lengthIn, latitude, longitude, photoUrl, getToken]);
 
   // Show sign-in wall if not authenticated
   if (isLoaded && !isSignedIn) {
@@ -276,11 +356,38 @@ export default function SubmitCatchScreen() {
             )}
           </View>
 
+          {/* Photo */}
+          <View style={styles.field}>
+            <Text style={styles.label}>Photo</Text>
+            {photoUri ? (
+              <View>
+                <Image source={{ uri: photoUri }} style={styles.photoPreview} resizeMode="cover" />
+                {uploadingPhoto && (
+                  <View style={styles.photoOverlay}>
+                    <ActivityIndicator size="small" color="#fff" />
+                    <Text style={styles.photoOverlayText}>Uploading…</Text>
+                  </View>
+                )}
+                {!uploadingPhoto && photoUrl && (
+                  <Text style={styles.photoUploaded}>✓ Photo uploaded</Text>
+                )}
+                <TouchableOpacity style={styles.photoChangeBtn} onPress={showPhotoPicker}>
+                  <Text style={styles.photoChangeBtnText}>Change Photo</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.photoBtn} onPress={showPhotoPicker}>
+                <Text style={styles.photoBtnIcon}>📷</Text>
+                <Text style={styles.photoBtnText}>Add Photo</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           {/* Submit */}
           <TouchableOpacity
-            style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
+            style={[styles.submitBtn, (submitting || uploadingPhoto) && styles.submitBtnDisabled]}
             onPress={handleSubmit}
-            disabled={submitting}
+            disabled={submitting || uploadingPhoto}
           >
             {submitting ? (
               <ActivityIndicator size="small" color="#fff" />
@@ -315,6 +422,15 @@ const styles = StyleSheet.create({
   gpsBtn: { backgroundColor: "#6b7280", borderRadius: 10, paddingVertical: 12, alignItems: "center" },
   gpsBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
   gpsText: { fontSize: 13, color: "#166534", fontWeight: "500" },
+  photoBtn: { backgroundColor: "#fff", borderWidth: 2, borderColor: "#d1d5db", borderStyle: "dashed", borderRadius: 12, paddingVertical: 24, alignItems: "center", gap: 8 },
+  photoBtnIcon: { fontSize: 32 },
+  photoBtnText: { fontSize: 14, color: "#6b7280", fontWeight: "600" },
+  photoPreview: { width: "100%", height: 200, borderRadius: 12, marginBottom: 8 },
+  photoOverlay: { position: "absolute", top: 0, left: 0, right: 0, height: 200, borderRadius: 12, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", alignItems: "center", gap: 8 },
+  photoOverlayText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  photoUploaded: { fontSize: 12, color: "#166534", fontWeight: "600", marginBottom: 6 },
+  photoChangeBtn: { alignSelf: "flex-start" },
+  photoChangeBtnText: { fontSize: 13, color: "#6b7280", textDecorationLine: "underline" },
   submitBtn: { backgroundColor: GREEN, borderRadius: 12, paddingVertical: 16, alignItems: "center", marginTop: 8 },
   submitBtnDisabled: { opacity: 0.6 },
   submitBtnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
