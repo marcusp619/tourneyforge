@@ -16,12 +16,12 @@
   "dependencies": {
     "@tourneyforge/types": "workspace:*",
     "@tourneyforge/validators": "workspace:*",
-    "drizzle-orm": "^0.41.0",
+    "drizzle-orm": "^0.45.1",
     "postgres": "^3.4.5"
   },
   "devDependencies": {
     "@tourneyforge/config": "workspace:*",
-    "drizzle-kit": "^0.30.4",
-    "typescript": "^5.7.3"
+    "drizzle-kit": "^0.31.9",
+    "typescript": "^5.9.3"
   }
 }

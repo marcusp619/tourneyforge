@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -17,7 +18,9 @@
       "buildNumber": "1",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "TourneyForge uses your location to GPS-tag your catch submissions.",
-        "NSLocationAlwaysUsageDescription": "TourneyForge uses your location to GPS-tag your catch submissions."
+        "NSLocationAlwaysUsageDescription": "TourneyForge uses your location to GPS-tag your catch submissions.",
+        "NSCameraUsageDescription": "TourneyForge needs camera access to photograph your catch.",
+        "NSPhotoLibraryUsageDescription": "TourneyForge needs photo library access to attach catch photos."
       }
     },
     "android": {
@@ -29,7 +32,9 @@
       },
       "permissions": [
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_MEDIA_IMAGES"
       ]
     },
     "web": {
@@ -42,12 +47,16 @@
         {
           "locationWhenInUsePermission": "TourneyForge uses your location to GPS-tag your catch submissions."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "TourneyForge needs photo library access to attach catch photos.",
+          "cameraPermission": "TourneyForge needs camera access to photograph your catch."
+        }
       ]
     ],
     "scheme": "tourneyforge",
-    "experiments": {
-      "typedRoutes": true
-    },
     "extra": {
       "eas": {
         "projectId": "EXPO_PROJECT_ID_PLACEHOLDER"
