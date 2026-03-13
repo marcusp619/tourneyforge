@@ -16,7 +16,7 @@ export async function GET() {
 
   const { tenant } = await requireTenant();
 
-  const stripe = new Stripe(stripeKey, { apiVersion: "2025-02-24.acacia" });
+  const stripe = new Stripe(stripeKey, { apiVersion: Stripe.latestApiVersion });
 
   const baseUrl = process.env.NEXT_PUBLIC_ROOT_DOMAIN
     ? `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN}`

@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
-    "@upstash/redis": "^1.36.2",
-    "@upstash/ratelimit": "^2.0.5",
+    "@upstash/redis": "^1.37.0",
+    "@upstash/ratelimit": "^2.0.8",
     "@aws-sdk/client-s3": "^3.741.0",
     "@aws-sdk/s3-request-presigner": "^3.741.0",
     "@hono/zod-validator": "^0.4.3",
@@ -20,15 +20,15 @@
     "@tourneyforge/themes": "workspace:*",
     "@tourneyforge/types": "workspace:*",
     "@tourneyforge/validators": "workspace:*",
-    "hono": "^4.6.15",
-    "resend": "^6.9.2",
-    "stripe": "^17.5.0",
+    "hono": "^4.12.7",
+    "resend": "^6.9.3",
+    "stripe": "^20.4.1",
     "twilio": "^5.12.2",
-    "zod": "^3.23.8"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tourneyforge/config": "workspace:*",
     "@types/bun": "^1.2.3",
-    "typescript": "^5.7.3"
+    "typescript": "^5.9.3"
   }
 }

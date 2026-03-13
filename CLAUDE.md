@@ -171,7 +171,7 @@ NEXT_PUBLIC_API_URL                   # e.g., https://api.tourneyforge.com
 
 4. **`transpilePackages` required** — Every `@tourneyforge/*` workspace package (that ships TS source) plus `tamagui`, `@tamagui/core`, `react-native-web` must be listed in `next.config.js` `transpilePackages`.
 
-5. **Next.js minimum 15.2.3** — Earlier versions have CVE-2025-29927 (CVSS 9.1) middleware bypass. Never downgrade.
+5. **Next.js on 16.1.6** — Do not downgrade below 15.2.3 (CVE-2025-29927 CVSS 9.1 middleware bypass). Currently on 16.x.
 
 6. **Hono needs `moduleResolution: bundler`** — The `node` strategy breaks Hono subpath imports (`hono/cors`, `hono/logger`, etc.).
 
@@ -179,7 +179,9 @@ NEXT_PUBLIC_API_URL                   # e.g., https://api.tourneyforge.com
 
 8. **API Dockerfile builds from monorepo root** — Run `docker build -f packages/api/Dockerfile .` from the repo root, not from inside the package.
 
-9. **React / React Native versions are pinned** — Match Expo SDK 52's exact peer requirements. Do not float these with `^`.
+9. **React / React Native versions are pinned** — Match Expo SDK 55's exact peer requirements (React 19.2.4, RN 0.83.0). Do not float these with `^` in the mobile app.
+
+10. **Expo SDK 55 requires New Architecture** — `newArchEnabled: true` is mandatory in `app.json`. The Legacy Architecture flag is removed.
 
 ## Code Style
 
