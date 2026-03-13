@@ -16,7 +16,7 @@ export const teams = pgTable(
       .notNull()
       .references(() => tournaments.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    captainId: uuid("captain_id").notNull().references(() => users.id),
+    captainId: text("captain_id").notNull().references(() => users.id),
     divisionId: uuid("division_id").references(() => tournamentDivisions.id),
     boatName: text("boat_name"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -218,7 +218,7 @@ export const catches = pgTable(
     longitude: text("longitude"), // decimal degrees
     verified: text("verified").notNull().default("false"), // boolean as text
     verifiedAt: timestamp("verified_at"),
-    verifiedBy: uuid("verified_by").references(() => users.id),
+    verifiedBy: text("verified_by").references(() => users.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   () => [
