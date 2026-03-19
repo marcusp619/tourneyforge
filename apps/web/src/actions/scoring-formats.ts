@@ -1,6 +1,5 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
 import { db, scoringFormats } from "@tourneyforge/db";
 import { eq, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -19,9 +18,6 @@ const scoringFormatFormSchema = z.object({
 });
 
 export async function createScoringFormat(formData: FormData) {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
-
   const { tenant } = await requireTenant();
 
   const parsed = scoringFormatFormSchema.safeParse({
@@ -62,9 +58,6 @@ export async function createScoringFormat(formData: FormData) {
 }
 
 export async function deleteScoringFormat(id: string) {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
-
   const { tenant } = await requireTenant();
 
   await db

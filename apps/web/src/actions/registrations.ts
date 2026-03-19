@@ -8,6 +8,8 @@ import { registerFormSchema, PLATFORM_FEE_BPS } from "@tourneyforge/validators";
 import Stripe from "stripe";
 import { sendRegistrationConfirmation } from "@/lib/email";
 
+const LOCAL_DEV = process.env.LOCAL_DEV === "true";
+
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY is not set");
@@ -19,7 +21,7 @@ export async function createRegistration(
   tenantSlug: string,
   formData: FormData
 ) {
-  const { userId: clerkUserId } = await auth();
+  const clerkUserId = LOCAL_DEV ? "local-dev-user" : (await auth()).userId;
   if (!clerkUserId) redirect("/sign-in");
 
   // Parse + validate form data

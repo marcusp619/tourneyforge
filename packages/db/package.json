@@ -10,6 +10,7 @@
     "migrate": "drizzle-kit migrate",
     "studio": "drizzle-kit studio",
     "seed": "bun run src/seed.ts",
+    "simulate": "bun run src/simulate-leaderboard.ts",
     "check": "tsc --noEmit",
     "lint": "eslint src/"
   },

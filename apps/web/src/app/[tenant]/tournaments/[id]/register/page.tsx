@@ -27,11 +27,15 @@ function formatCents(cents: number): string {
   }).format(cents / 100);
 }
 
+const LOCAL_DEV = process.env.LOCAL_DEV === "true";
+
 export default async function RegisterPage({ params }: Props) {
   const { tenant: slug, id } = await params;
 
-  const { userId } = await auth();
-  if (!userId) redirect(`/sign-in?redirect_url=/${slug}/tournaments/${id}/register`);
+  if (!LOCAL_DEV) {
+    const { userId } = await auth();
+    if (!userId) redirect(`/sign-in?redirect_url=/${slug}/tournaments/${id}/register`);
+  }
 
   const [tenant] = await db
     .select()

@@ -94,10 +94,16 @@ export default async function LeaderboardPage({ params }: Props) {
     ...(Object.keys(scoringOptions ?? {}).length > 0 ? { options: scoringOptions } : {}),
   };
 
+  const catchCountByTeam = new Map<string, number>();
+  for (const c of tournamentCatches) {
+    catchCountByTeam.set(c.teamId, (catchCountByTeam.get(c.teamId) ?? 0) + 1);
+  }
+
   const result = calculateStandings(input);
   const leaderboard = result.leaderboard.map((e) => ({
     ...e,
     teamName: teamNames.get(e.teamId) ?? e.teamId,
+    catchCount: catchCountByTeam.get(e.teamId) ?? 0,
   }));
 
   const scoreLabel = scoringFormat === "weight" ? "Total Weight" : scoringFormat === "length" ? "Total Length" : "Fish Count";
@@ -177,7 +183,7 @@ export default async function LeaderboardPage({ params }: Props) {
                     {entry.teamName}
                   </p>
                   <p className="text-xs mt-0.5" style={{ color: "var(--color-muted)" }}>
-                    {entry.details["catchCount"] ?? 0} {(entry.details["catchCount"] ?? 0) === 1 ? "catch" : "catches"}
+                    {entry.catchCount} {entry.catchCount === 1 ? "catch" : "catches"}
                   </p>
                 </div>
 

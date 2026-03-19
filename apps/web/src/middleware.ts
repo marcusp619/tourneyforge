@@ -86,29 +86,35 @@ async function resolveTenant(req: NextRequest): Promise<NextResponse | null> {
   return null;
 }
 
-export default clerkMiddleware(async (auth, req) => {
-  const url = req.nextUrl;
-
-  // Skip for API routes and static assets
-  if (
-    url.pathname.startsWith("/api/") ||
-    url.pathname.startsWith("/_next/") ||
-    url.pathname.startsWith("/static")
-  ) {
-    return NextResponse.next();
-  }
-
-  // Resolve tenant subdomain / custom domain
+async function localDevMiddleware(req: NextRequest): Promise<NextResponse> {
   const tenantResponse = await resolveTenant(req);
-  if (tenantResponse) return tenantResponse;
+  return tenantResponse ?? NextResponse.next();
+}
 
-  // Protect routes that require auth (skipped in LOCAL_DEV mode)
-  if (!LOCAL_DEV && isProtectedRoute(req)) {
-    await auth.protect();
-  }
+export default LOCAL_DEV
+  ? localDevMiddleware
+  : clerkMiddleware(async (auth, req) => {
+      const url = req.nextUrl;
 
-  return NextResponse.next();
-});
+      // Skip for API routes and static assets
+      if (
+        url.pathname.startsWith("/api/") ||
+        url.pathname.startsWith("/_next/") ||
+        url.pathname.startsWith("/static")
+      ) {
+        return NextResponse.next();
+      }
+
+      // Resolve tenant subdomain / custom domain
+      const tenantResponse = await resolveTenant(req);
+      if (tenantResponse) return tenantResponse;
+
+      if (isProtectedRoute(req)) {
+        await auth.protect();
+      }
+
+      return NextResponse.next();
+    });
 
 export const config = {
   matcher: [

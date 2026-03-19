@@ -54,7 +54,8 @@
           "photosPermission": "TourneyForge needs photo library access to attach catch photos.",
           "cameraPermission": "TourneyForge needs camera access to photograph your catch."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "scheme": "tourneyforge",
     "extra": {

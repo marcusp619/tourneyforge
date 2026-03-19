@@ -3,10 +3,14 @@ import { auth } from "@clerk/nextjs/server";
 import { requireTenant } from "@/lib/tenant";
 import Stripe from "stripe";
 
+const LOCAL_DEV = process.env.LOCAL_DEV === "true";
+
 export async function GET() {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.redirect(new URL("/sign-in", process.env.NEXT_PUBLIC_ROOT_DOMAIN ? `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN}` : "http://localhost:3000"));
+  if (!LOCAL_DEV) {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.redirect(new URL("/sign-in", process.env.NEXT_PUBLIC_ROOT_DOMAIN ? `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN}` : "http://localhost:3000"));
+    }
   }
 
   const stripeKey = process.env.STRIPE_SECRET_KEY;

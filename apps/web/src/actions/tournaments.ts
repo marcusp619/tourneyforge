@@ -1,6 +1,5 @@
 "use server";
 
-import { auth } from "@clerk/nextjs/server";
 import { db, tournaments, tournamentDivisions } from "@tourneyforge/db";
 import { eq, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -20,9 +19,6 @@ const tournamentFormSchema = z.object({
 });
 
 export async function createTournament(formData: FormData) {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
-
   const { tenant } = await requireTenant();
 
   const parsed = tournamentFormSchema.safeParse({
@@ -64,9 +60,6 @@ export async function createTournament(formData: FormData) {
 }
 
 export async function updateTournament(id: string, formData: FormData) {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
-
   const { tenant } = await requireTenant();
 
   const parsed = tournamentFormSchema.safeParse({
@@ -111,9 +104,6 @@ export async function updateTournamentStatus(
   id: string,
   status: "draft" | "open" | "active" | "completed"
 ) {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
-
   const { tenant } = await requireTenant();
 
   await db
@@ -136,9 +126,6 @@ export async function updateTournamentStatus(
 }
 
 export async function deleteTournament(id: string) {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
-
   const { tenant } = await requireTenant();
 
   await db

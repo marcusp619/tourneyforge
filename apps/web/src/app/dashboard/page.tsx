@@ -5,12 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trophy, Palette, BarChart3, Store, ArrowRight, CheckCircle2 } from "lucide-react";
 
-export default async function DashboardPage() {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
+const LOCAL_DEV = process.env.LOCAL_DEV === "true";
 
-  const user = await currentUser();
-  const firstName = user?.firstName ?? "there";
+export default async function DashboardPage() {
+  let firstName = "there";
+  if (!LOCAL_DEV) {
+    const { userId } = await auth();
+    if (!userId) redirect("/sign-in");
+    const user = await currentUser();
+    firstName = user?.firstName ?? "there";
+  }
 
   const cards = [
     {

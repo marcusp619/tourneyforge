@@ -4,6 +4,8 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import type { Tenant } from "@tourneyforge/types";
 
+const LOCAL_DEV = process.env.LOCAL_DEV === "true";
+
 export interface TenantContext {
   tenant: Tenant;
   role: string;
@@ -16,6 +18,12 @@ export interface TenantContext {
  * Returns null if the user has no tenant membership yet.
  */
 export async function getCurrentTenant(): Promise<TenantContext | null> {
+  if (LOCAL_DEV) {
+    const [tenant] = await db.select().from(tenants).limit(1);
+    if (!tenant) return null;
+    return { tenant: tenant as Tenant, role: "owner", userId: "local-dev-user" };
+  }
+
   const { userId: clerkUserId } = await auth();
   if (!clerkUserId) redirect("/sign-in");
 

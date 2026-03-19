@@ -3,6 +3,7 @@ import { db, marketplaceSponsors } from "@tourneyforge/db";
 import { eq, desc } from "drizzle-orm";
 import Link from "next/link";
 import Image from "next/image";
+import SponsorContactButton from "./SponsorContactButton";
 
 export const metadata = { title: "Sponsor Marketplace | Dashboard" };
 
@@ -140,12 +141,7 @@ export default async function MarketplaceDashboardPage() {
 
                 {/* Actions */}
                 <div className="mt-auto flex gap-3">
-                  <a
-                    href={`mailto:${sponsor.contactEmail}?subject=Sponsorship Inquiry – TourneyForge Tournament`}
-                    className="flex-1 text-center text-sm font-semibold bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
-                  >
-                    Contact
-                  </a>
+                  <SponsorContactButton sponsorId={sponsor.id} sponsorName={sponsor.name} />
                   {sponsor.website && (
                     <a
                       href={sponsor.website}
@@ -168,7 +164,8 @@ export default async function MarketplaceDashboardPage() {
         <p className="font-semibold text-gray-800 mb-1">How it works</p>
         <p>
           Sponsors listed here have opted in to be contacted by tournament directors. Click{" "}
-          <strong>Contact</strong> to open a pre-filled email, or visit their website to learn more.
+          <strong>Contact</strong> to send a direct inquiry — the sponsor will receive your message
+          and reply to your email address. Visit their website to learn more before reaching out.
           Once you agree on terms, add them to your tournament via{" "}
           <Link href="/dashboard/tournaments" className="text-blue-600 hover:underline">
             Tournaments → Sponsors
