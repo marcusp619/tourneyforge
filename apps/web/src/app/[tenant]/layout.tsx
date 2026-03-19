@@ -101,6 +101,24 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
               Tournaments
             </Link>
             <Link
+              href={`/${slug}/results`}
+              className="text-white/90 hover:text-white font-medium transition"
+            >
+              Results
+            </Link>
+            <Link
+              href={`/${slug}/rules`}
+              className="text-white/90 hover:text-white font-medium transition"
+            >
+              Rules
+            </Link>
+            <Link
+              href={`/${slug}/about`}
+              className="text-white/90 hover:text-white font-medium transition"
+            >
+              About
+            </Link>
+            <Link
               href="/sign-in"
               className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg font-medium transition"
             >

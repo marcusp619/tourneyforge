@@ -140,6 +140,23 @@ export async function saveLogoUrl(logoUrl: string) {
 }
 
 /**
+ * Save about and rules page text for the public tenant site.
+ */
+export async function updateSiteContent(formData: FormData) {
+  const { tenant } = await requireTenant();
+
+  const aboutText = (formData.get("aboutText") as string | null)?.trim() || null;
+  const rulesText = (formData.get("rulesText") as string | null)?.trim() || null;
+
+  await db
+    .update(tenants)
+    .set({ aboutText, rulesText, updatedAt: new Date() })
+    .where(eq(tenants.id, tenant.id));
+
+  revalidatePath("/dashboard/settings");
+}
+
+/**
  * Save theme preset + color overrides + tagline.
  */
 export async function saveThemeSettings(settings: {

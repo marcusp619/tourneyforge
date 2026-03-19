@@ -255,8 +255,8 @@ Run with: `cd packages/api && bun test`
 
 **Low**:
 - Scoring engine edge cases not tested (ties, dead fish penalties, zero catches)
-- Marketplace sponsor inquiry is `mailto:` only — no in-app form
-- Public tenant site missing results archive, about/rules pages
+- ~~Marketplace sponsor inquiry is `mailto:` only — no in-app form~~ — done: dialog form + Resend email delivery in `SponsorContactButton.tsx`
+- ~~Public tenant site missing results archive, about/rules pages~~ — done: `/results`, `/about`, `/rules` pages added; `aboutText`/`rulesText` columns on `tenants`; dashboard settings editor
 - No soft deletes / audit trail anywhere
 
 ---
