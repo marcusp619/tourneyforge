@@ -1,6 +1,6 @@
 import { requireTenant } from "@/lib/tenant";
 import { db, tournaments, registrations, catches } from "@tourneyforge/db";
-import { eq, count, and } from "drizzle-orm";
+import { eq, count, and, isNull } from "drizzle-orm";
 import { SUBSCRIPTION_LIMITS } from "@tourneyforge/types";
 import Link from "next/link";
 
@@ -42,7 +42,7 @@ export default async function AnalyticsPage() {
   const tenantTournaments = await db
     .select()
     .from(tournaments)
-    .where(eq(tournaments.tenantId, tenant.id));
+    .where(and(eq(tournaments.tenantId, tenant.id), isNull(tournaments.deletedAt)));
 
   // Per-tournament stats
   const tournamentStats = await Promise.all(
@@ -60,7 +60,7 @@ export default async function AnalyticsPage() {
         db
           .select({ value: count() })
           .from(catches)
-          .where(eq(catches.tournamentId, t.id)),
+          .where(and(eq(catches.tournamentId, t.id), isNull(catches.deletedAt))),
       ]);
 
       const regCount = regCountResult[0]?.value ?? 0;

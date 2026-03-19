@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { db, tenants, tournaments } from "@tourneyforge/db";
-import { eq, and, or } from "drizzle-orm";
+import { eq, and, or, isNull } from "drizzle-orm";
 import { resolveTheme } from "@tourneyforge/themes";
 import Link from "next/link";
 
@@ -55,7 +55,8 @@ export default async function TenantHomePage({ params }: TenantPageProps) {
     .where(
       and(
         eq(tournaments.tenantId, tenant.id),
-        or(eq(tournaments.status, "open"), eq(tournaments.status, "active"))
+        or(eq(tournaments.status, "open"), eq(tournaments.status, "active")),
+        isNull(tournaments.deletedAt)
       )
     )
     .limit(6);

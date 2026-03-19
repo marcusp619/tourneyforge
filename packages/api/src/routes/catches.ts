@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { db, catches, tournaments, teams, species } from "@tourneyforge/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { catchSubmitSchema } from "@tourneyforge/validators";
 
 export const catchRouter = new Hono();
@@ -40,7 +40,7 @@ catchRouter.get(
       .from(catches)
       .innerJoin(teams, eq(teams.id, catches.teamId))
       .innerJoin(species, eq(species.id, catches.speciesId))
-      .where(and(eq(catches.tournamentId, tournamentId), eq(catches.tenantId, tenantId)))
+      .where(and(eq(catches.tournamentId, tournamentId), eq(catches.tenantId, tenantId), isNull(catches.deletedAt)))
       .orderBy(catches.timestamp);
 
     return c.json({ data: rows });
@@ -139,7 +139,7 @@ catchRouter.patch(
   }
 );
 
-// DELETE /api/catches/:id — director removes a catch
+// DELETE /api/catches/:id — director removes a catch (soft delete)
 catchRouter.delete("/:id", async (c) => {
   const id = c.req.param("id");
   const tenantId = c.req.header("x-tenant-id");
@@ -148,8 +148,9 @@ catchRouter.delete("/:id", async (c) => {
   }
 
   const [deleted] = await db
-    .delete(catches)
-    .where(and(eq(catches.id, id), eq(catches.tenantId, tenantId)))
+    .update(catches)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(catches.id, id), eq(catches.tenantId, tenantId), isNull(catches.deletedAt)))
     .returning({ id: catches.id });
 
   if (!deleted) {

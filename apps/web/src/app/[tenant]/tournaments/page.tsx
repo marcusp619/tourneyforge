@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { db, tenants, tournaments } from "@tourneyforge/db";
-import { eq, and, ne, desc } from "drizzle-orm";
+import { eq, and, ne, desc, isNull } from "drizzle-orm";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -63,7 +63,8 @@ export default async function TournamentsPage({ params }: TournamentsPageProps) 
     .where(
       and(
         eq(tournaments.tenantId, tenant.id),
-        ne(tournaments.status, "draft")
+        ne(tournaments.status, "draft"),
+        isNull(tournaments.deletedAt)
       )
     )
     .orderBy(desc(tournaments.startDate));

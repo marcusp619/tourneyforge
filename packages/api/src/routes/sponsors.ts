@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { db } from "@tourneyforge/db";
 import { sponsors } from "@tourneyforge/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 export const sponsorRouter = new Hono();
@@ -33,8 +33,8 @@ sponsorRouter.get("/", async (c) => {
     .from(sponsors)
     .where(
       tournamentId
-        ? and(eq(sponsors.tenantId, tenantId), eq(sponsors.tournamentId, tournamentId))
-        : eq(sponsors.tenantId, tenantId)
+        ? and(eq(sponsors.tenantId, tenantId), eq(sponsors.tournamentId, tournamentId), isNull(sponsors.deletedAt))
+        : and(eq(sponsors.tenantId, tenantId), isNull(sponsors.deletedAt))
     )
     .orderBy(sponsors.displayOrder, sponsors.createdAt);
 
@@ -71,9 +71,23 @@ sponsorRouter.patch("/:id", zValidator("json", updateSponsorSchema), async (c) =
   return c.json({ data: updated });
 });
 
-// DELETE /api/sponsors/:id
+// DELETE /api/sponsors/:id (soft delete)
 sponsorRouter.delete("/:id", async (c) => {
+  const tenantId = c.req.query("tenantId");
+  if (!tenantId) {
+    return c.json({ error: { code: "BAD_REQUEST", message: "tenantId is required" } }, 400);
+  }
+
   const id = c.req.param("id");
-  await db.delete(sponsors).where(eq(sponsors.id, id));
+  const [deleted] = await db
+    .update(sponsors)
+    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(sponsors.id, id), eq(sponsors.tenantId, tenantId), isNull(sponsors.deletedAt)))
+    .returning({ id: sponsors.id });
+
+  if (!deleted) {
+    return c.json({ error: { code: "NOT_FOUND", message: "Sponsor not found" } }, 404);
+  }
+
   return c.json({ data: { success: true } });
 });

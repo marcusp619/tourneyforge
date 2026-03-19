@@ -1,6 +1,6 @@
 import { requireTenant } from "@/lib/tenant";
 import { db, tournaments, tournamentDivisions, scoringFormats } from "@tourneyforge/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -52,8 +52,8 @@ export default async function TournamentDetailPage({ params }: Props) {
     db
       .select()
       .from(tournamentDivisions)
-      .where(and(eq(tournamentDivisions.tournamentId, id), eq(tournamentDivisions.tenantId, tenant.id))),
-    db.select().from(scoringFormats).where(eq(scoringFormats.tenantId, tenant.id)),
+      .where(and(eq(tournamentDivisions.tournamentId, id), eq(tournamentDivisions.tenantId, tenant.id), isNull(tournamentDivisions.deletedAt))),
+    db.select().from(scoringFormats).where(and(eq(scoringFormats.tenantId, tenant.id), isNull(scoringFormats.deletedAt))),
   ]);
 
   const statusInfo = STATUS_LABELS[tournament.status] ?? STATUS_LABELS.draft!;

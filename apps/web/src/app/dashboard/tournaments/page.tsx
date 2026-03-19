@@ -1,6 +1,6 @@
 import { requireTenant } from "@/lib/tenant";
 import { db, tournaments } from "@tourneyforge/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, isNull } from "drizzle-orm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +26,7 @@ export default async function TournamentsPage() {
   const allTournaments = await db
     .select()
     .from(tournaments)
-    .where(eq(tournaments.tenantId, tenant.id))
+    .where(and(eq(tournaments.tenantId, tenant.id), isNull(tournaments.deletedAt)))
     .orderBy(desc(tournaments.createdAt));
 
   return (

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { db, tenants, tournaments, catches, teams, scoringFormats } from "@tourneyforge/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { calculateStandings, type ScoringInput } from "@tourneyforge/scoring";
@@ -68,7 +68,7 @@ export default async function ResultsPage({ params }: Props) {
         const [fmt] = await db
           .select()
           .from(scoringFormats)
-          .where(eq(scoringFormats.id, t.scoringFormatId))
+          .where(and(eq(scoringFormats.id, t.scoringFormatId), isNull(scoringFormats.deletedAt)))
           .limit(1);
         if (fmt) {
           if (fmt.type === "weight" || fmt.type === "length" || fmt.type === "count") {
@@ -83,7 +83,7 @@ export default async function ResultsPage({ params }: Props) {
       }
 
       const [tournamentCatches, tournamentTeams] = await Promise.all([
-        db.select().from(catches).where(eq(catches.tournamentId, t.id)),
+        db.select().from(catches).where(and(eq(catches.tournamentId, t.id), isNull(catches.deletedAt))),
         db.select({ id: teams.id, name: teams.name }).from(teams).where(eq(teams.tournamentId, t.id)),
       ]);
 

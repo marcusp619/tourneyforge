@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { db, tournamentDivisions, tournaments } from "@tourneyforge/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 export const divisionRouter = new Hono();
@@ -37,7 +37,8 @@ divisionRouter.get("/:tournamentId/divisions", async (c) => {
     .where(
       and(
         eq(tournamentDivisions.tournamentId, tournamentId),
-        eq(tournamentDivisions.tenantId, tenantId)
+        eq(tournamentDivisions.tenantId, tenantId),
+        isNull(tournamentDivisions.deletedAt)
       )
     );
 
@@ -95,9 +96,10 @@ divisionRouter.delete("/:tournamentId/divisions/:divisionId", async (c) => {
   const divisionId = c.req.param("divisionId");
 
   const [deleted] = await db
-    .delete(tournamentDivisions)
+    .update(tournamentDivisions)
+    .set({ deletedAt: new Date() })
     .where(
-      and(eq(tournamentDivisions.id, divisionId), eq(tournamentDivisions.tenantId, tenantId))
+      and(eq(tournamentDivisions.id, divisionId), eq(tournamentDivisions.tenantId, tenantId), isNull(tournamentDivisions.deletedAt))
     )
     .returning();
 

@@ -1,7 +1,7 @@
 "use server";
 
 import { db, scoringFormats } from "@tourneyforge/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireTenant } from "@/lib/tenant";
@@ -61,8 +61,9 @@ export async function deleteScoringFormat(id: string) {
   const { tenant } = await requireTenant();
 
   await db
-    .delete(scoringFormats)
-    .where(and(eq(scoringFormats.id, id), eq(scoringFormats.tenantId, tenant.id)));
+    .update(scoringFormats)
+    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(scoringFormats.id, id), eq(scoringFormats.tenantId, tenant.id), isNull(scoringFormats.deletedAt)));
 
   revalidatePath("/dashboard/scoring-formats");
 }

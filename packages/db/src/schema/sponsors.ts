@@ -25,6 +25,7 @@ export const sponsors = pgTable(
     displayOrder: integer("display_order").notNull().default(0),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at"),
   },
   () => [
     pgPolicy("sponsors_enable_rls", { for: "all", to: "public", using: sql`true` }),

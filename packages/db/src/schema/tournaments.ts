@@ -31,6 +31,7 @@ export const tournaments = pgTable(
     maxTeams: integer("max_teams"), // null = unlimited
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at"),
   },
   () => [
     // Enable RLS
@@ -82,6 +83,7 @@ export const scoringFormats = pgTable(
     rules: text("rules").notNull(), // JSON string
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at"),
   },
   () => [
     pgPolicy("scoring_formats_enable_rls", { for: "all", to: "public", using: sql`true` }),

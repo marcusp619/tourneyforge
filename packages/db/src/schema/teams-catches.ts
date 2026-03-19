@@ -63,6 +63,7 @@ export const tournamentDivisions = pgTable(
     name: text("name").notNull(),
     description: text("description"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at"),
   },
   () => [
     pgPolicy("divisions_enable_rls", { for: "all", to: "public", using: sql`true` }),
@@ -220,6 +221,7 @@ export const catches = pgTable(
     verifiedAt: timestamp("verified_at"),
     verifiedBy: text("verified_by").references(() => users.id),
     createdAt: timestamp("created_at").notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at"),
   },
   () => [
     pgPolicy("catches_enable_rls", { for: "all", to: "public", using: sql`true` }),

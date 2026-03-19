@@ -3,7 +3,7 @@ import { zValidator } from "@hono/zod-validator";
 import { db } from "@tourneyforge/db";
 import { tournaments } from "@tourneyforge/db";
 import { createTournamentSchema, updateTournamentSchema } from "@tourneyforge/validators";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 
 export const tournamentRouter = new Hono();
 
@@ -17,7 +17,7 @@ tournamentRouter.get("/", async (c) => {
   const tenantTournaments = await db
     .select()
     .from(tournaments)
-    .where(eq(tournaments.tenantId, tenantId));
+    .where(and(eq(tournaments.tenantId, tenantId), isNull(tournaments.deletedAt)));
 
   return c.json({ data: tenantTournaments });
 });
@@ -25,7 +25,7 @@ tournamentRouter.get("/", async (c) => {
 // Get tournament by ID
 tournamentRouter.get("/:id", async (c) => {
   const id = c.req.param("id");
-  const tournament = await db.select().from(tournaments).where(eq(tournaments.id, id));
+  const tournament = await db.select().from(tournaments).where(and(eq(tournaments.id, id), isNull(tournaments.deletedAt)));
 
   if (!tournament.length) {
     return c.json({ error: { code: "NOT_FOUND", message: "Tournament not found" } }, 404);
@@ -63,14 +63,23 @@ tournamentRouter.patch("/:id", zValidator("json", updateTournamentSchema), async
   return c.json({ data: updated[0] });
 });
 
-// Delete tournament
+// Delete tournament (soft delete)
 tournamentRouter.delete("/:id", async (c) => {
-  const id = c.req.param("id");
-  const deleted = await db.delete(tournaments).where(eq(tournaments.id, id)).returning();
+  const tenantId = c.req.header("x-tenant-id");
+  if (!tenantId) {
+    return c.json({ error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } }, 400);
+  }
 
-  if (!deleted.length) {
+  const id = c.req.param("id");
+  const [deleted] = await db
+    .update(tournaments)
+    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(tournaments.id, id), eq(tournaments.tenantId, tenantId), isNull(tournaments.deletedAt)))
+    .returning();
+
+  if (!deleted) {
     return c.json({ error: { code: "NOT_FOUND", message: "Tournament not found" } }, 404);
   }
 
-  return c.json({ data: deleted[0] });
+  return c.json({ data: deleted });
 });

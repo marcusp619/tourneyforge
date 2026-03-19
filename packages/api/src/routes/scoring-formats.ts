@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { db, scoringFormats } from "@tourneyforge/db";
 import { createScoringFormatSchema } from "@tourneyforge/validators";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 
 export const scoringFormatRouter = new Hono();
 
@@ -16,7 +16,7 @@ scoringFormatRouter.get("/", async (c) => {
   const formats = await db
     .select()
     .from(scoringFormats)
-    .where(eq(scoringFormats.tenantId, tenantId));
+    .where(and(eq(scoringFormats.tenantId, tenantId), isNull(scoringFormats.deletedAt)));
 
   return c.json({ data: formats });
 });
@@ -32,7 +32,7 @@ scoringFormatRouter.get("/:id", async (c) => {
   const [format] = await db
     .select()
     .from(scoringFormats)
-    .where(and(eq(scoringFormats.id, id), eq(scoringFormats.tenantId, tenantId)))
+    .where(and(eq(scoringFormats.id, id), eq(scoringFormats.tenantId, tenantId), isNull(scoringFormats.deletedAt)))
     .limit(1);
 
   if (!format) {
@@ -79,8 +79,9 @@ scoringFormatRouter.delete("/:id", async (c) => {
 
   const id = c.req.param("id");
   const [deleted] = await db
-    .delete(scoringFormats)
-    .where(and(eq(scoringFormats.id, id), eq(scoringFormats.tenantId, tenantId)))
+    .update(scoringFormats)
+    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(scoringFormats.id, id), eq(scoringFormats.tenantId, tenantId), isNull(scoringFormats.deletedAt)))
     .returning();
 
   if (!deleted) {

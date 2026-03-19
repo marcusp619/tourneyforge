@@ -2,7 +2,7 @@
 
 import { requireTenant } from "@/lib/tenant";
 import { db, sponsors, marketplaceSponsors } from "@tourneyforge/db";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { sendSponsorInquiry } from "@/lib/email";
 
@@ -62,8 +62,9 @@ export async function deleteSponsor(sponsorId: string, tournamentId: string) {
   const { tenant } = await requireTenant();
 
   await db
-    .delete(sponsors)
-    .where(and(eq(sponsors.id, sponsorId), eq(sponsors.tenantId, tenant.id)));
+    .update(sponsors)
+    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(sponsors.id, sponsorId), eq(sponsors.tenantId, tenant.id), isNull(sponsors.deletedAt)));
 
   revalidatePath(`/dashboard/tournaments/${tournamentId}/sponsors`);
 }
