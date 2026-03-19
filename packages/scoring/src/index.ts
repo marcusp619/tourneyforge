@@ -12,6 +12,7 @@ export interface Catch {
   weight: number; // in ounces
   length: number; // in inches
   timestamp: Date;
+  deadFish?: boolean; // fish presented dead — subject to penalty
 }
 
 export interface ScoringInput {
@@ -21,6 +22,7 @@ export interface ScoringInput {
     maxCatches?: number; // For count-based scoring, only count top N
     speciesMultiplier?: Record<string, number>; // Species-specific multipliers
     minimumSize?: number; // Minimum size (weight or length) to qualify
+    deadFishPenalty?: number; // Fixed deduction per dead fish (same units as score)
   };
 }
 
@@ -93,6 +95,11 @@ export function calculateStandings(input: ScoringInput): ScoringResult {
         catchScore = 1 * multiplier;
       }
 
+      // Apply dead fish penalty
+      if (c.deadFish && options.deadFishPenalty !== undefined) {
+        catchScore -= options.deadFishPenalty;
+      }
+
       score += catchScore;
 
       // Track by species
@@ -104,16 +111,19 @@ export function calculateStandings(input: ScoringInput): ScoringResult {
     teamDetails.set(teamId, details);
   }
 
-  // Build leaderboard (sorted by score descending)
-  const leaderboard: LeaderboardEntry[] = Array.from(teamScores.entries())
-    .sort(([, a], [, b]) => b - a)
-    .map(([teamId, score], index) => ({
-      rank: index + 1,
+  // Build leaderboard (sorted by score descending, ties share rank)
+  const sorted = Array.from(teamScores.entries()).sort(([, a], [, b]) => b - a);
+  const leaderboard: LeaderboardEntry[] = sorted.map(([teamId, score], index) => {
+    // Rank = position of first entry with this score (1-based)
+    const rank = sorted.findIndex(([, s]) => s === score) + 1;
+    return {
+      rank,
       teamId,
       teamName: teamId, // Will be resolved by caller
       score,
       details: teamDetails.get(teamId) ?? {},
-    }));
+    };
+  });
 
   // Calculate species breakdown
   const speciesBreakdown: Record<string, number> = {};
