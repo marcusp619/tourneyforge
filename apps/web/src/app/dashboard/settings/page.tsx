@@ -1,6 +1,6 @@
 import { requireTenant } from "@/lib/tenant";
 import { ThemeSettingsClient } from "./ThemeSettingsClient";
-import { updateCustomDomain, generateApiKey, revokeApiKey } from "@/actions/settings";
+import { updateCustomDomain, generateApiKey, revokeApiKey, updateSiteContent } from "@/actions/settings";
 import { SUBSCRIPTION_LIMITS } from "@tourneyforge/types";
 import Link from "next/link";
 
@@ -234,6 +234,50 @@ export default async function SettingsPage({
             Public API access is available on the <strong>Enterprise</strong> plan.
           </div>
         )}
+      </section>
+
+      {/* Site Content */}
+      <section className="bg-white rounded-xl border border-gray-200 p-6 mb-8">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 mb-1">Site Content</h2>
+          <p className="text-sm text-gray-500">
+            Add content for the public <strong>About</strong> and <strong>Rules</strong> pages on your tournament site.
+          </p>
+        </div>
+        <form action={updateSiteContent} className="space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="aboutText">
+              About Page
+            </label>
+            <textarea
+              id="aboutText"
+              name="aboutText"
+              rows={6}
+              defaultValue={tenant.aboutText ?? ""}
+              placeholder="Tell anglers about your organization, history, and mission…"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1.5" htmlFor="rulesText">
+              Rules Page
+            </label>
+            <textarea
+              id="rulesText"
+              name="rulesText"
+              rows={8}
+              defaultValue={tenant.rulesText ?? ""}
+              placeholder="Enter your tournament rules, catch requirements, weigh-in procedures…"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+            />
+          </div>
+          <button
+            type="submit"
+            className="bg-blue-600 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-700 transition text-sm"
+          >
+            Save Content
+          </button>
+        </form>
       </section>
 
       {/* Theme & appearance (client component) */}
