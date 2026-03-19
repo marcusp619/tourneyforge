@@ -255,7 +255,7 @@ Run with: `cd packages/api && bun test`
 
 **Low**:
 - Scoring engine edge cases not tested (ties, dead fish penalties, zero catches)
-- Marketplace sponsor inquiry is `mailto:` only — no in-app form
+- ~~Marketplace sponsor inquiry is `mailto:` only — no in-app form~~ — done: dialog form + Resend email delivery in `SponsorContactButton.tsx`
 - Public tenant site missing results archive, about/rules pages
 - No soft deletes / audit trail anywhere
 
