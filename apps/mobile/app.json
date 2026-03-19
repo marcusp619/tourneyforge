@@ -20,7 +20,8 @@
         "NSLocationWhenInUseUsageDescription": "TourneyForge uses your location to GPS-tag your catch submissions.",
         "NSLocationAlwaysUsageDescription": "TourneyForge uses your location to GPS-tag your catch submissions.",
         "NSCameraUsageDescription": "TourneyForge needs camera access to photograph your catch.",
-        "NSPhotoLibraryUsageDescription": "TourneyForge needs photo library access to attach catch photos."
+        "NSPhotoLibraryUsageDescription": "TourneyForge needs photo library access to attach catch photos.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
