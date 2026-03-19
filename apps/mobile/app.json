@@ -31,10 +31,11 @@
         "backgroundColor": "#1d6b3e"
       },
       "permissions": [
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION",
-        "CAMERA",
-        "READ_MEDIA_IMAGES"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -60,8 +61,10 @@
     "scheme": "tourneyforge",
     "extra": {
       "eas": {
-        "projectId": "EXPO_PROJECT_ID_PLACEHOLDER"
-      }
-    }
+        "projectId": "130d9df2-a81c-4339-afcd-880157d5692f"
+      },
+      "router": {}
+    },
+    "owner": "mark619"
   }
 }
