@@ -257,6 +257,6 @@ Run with: `cd packages/api && bun test`
 - Scoring engine edge cases not tested (ties, dead fish penalties, zero catches)
 - ~~Marketplace sponsor inquiry is `mailto:` only — no in-app form~~ — done: dialog form + Resend email delivery in `SponsorContactButton.tsx`
 - ~~Public tenant site missing results archive, about/rules pages~~ — done: `/results`, `/about`, `/rules` pages added; `aboutText`/`rulesText` columns on `tenants`; dashboard settings editor
-- No soft deletes / audit trail anywhere
+- ~~No soft deletes / audit trail anywhere~~ — done: `deletedAt` added to catches, tournaments, scoringFormats, sponsors, tournamentDivisions; all hard deletes converted to soft deletes; all SELECT queries updated with `isNull(deletedAt)` filter
 
 ---

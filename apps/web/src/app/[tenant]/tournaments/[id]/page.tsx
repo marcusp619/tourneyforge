@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { db, tenants, tournaments, sponsors } from "@tourneyforge/db";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, isNull } from "drizzle-orm";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -65,7 +65,7 @@ export default async function TournamentDetailPage({
   const tournamentSponsors = await db
     .select()
     .from(sponsors)
-    .where(and(eq(sponsors.tenantId, tenant.id), eq(sponsors.tournamentId, id)))
+    .where(and(eq(sponsors.tenantId, tenant.id), eq(sponsors.tournamentId, id), isNull(sponsors.deletedAt)))
     .orderBy(asc(sponsors.displayOrder), asc(sponsors.createdAt));
 
   const isOpen = tournament.status === "open";

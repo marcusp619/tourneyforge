@@ -1,7 +1,7 @@
 "use server";
 
 import { db, tournaments, tournamentDivisions } from "@tourneyforge/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireTenant } from "@/lib/tenant";
@@ -129,8 +129,9 @@ export async function deleteTournament(id: string) {
   const { tenant } = await requireTenant();
 
   await db
-    .delete(tournaments)
-    .where(and(eq(tournaments.id, id), eq(tournaments.tenantId, tenant.id)));
+    .update(tournaments)
+    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(and(eq(tournaments.id, id), eq(tournaments.tenantId, tenant.id), isNull(tournaments.deletedAt)));
 
   revalidatePath("/dashboard/tournaments");
   redirect("/dashboard/tournaments");
@@ -168,11 +169,13 @@ export async function deleteDivision(tournamentId: string, divisionId: string) {
   const { tenant } = await requireTenant();
 
   await db
-    .delete(tournamentDivisions)
+    .update(tournamentDivisions)
+    .set({ deletedAt: new Date() })
     .where(
       and(
         eq(tournamentDivisions.id, divisionId),
-        eq(tournamentDivisions.tenantId, tenant.id)
+        eq(tournamentDivisions.tenantId, tenant.id),
+        isNull(tournamentDivisions.deletedAt)
       )
     );
 

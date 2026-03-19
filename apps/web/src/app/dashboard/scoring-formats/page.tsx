@@ -1,6 +1,6 @@
 import { requireTenant } from "@/lib/tenant";
 import { db, scoringFormats } from "@tourneyforge/db";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import Link from "next/link";
 import { deleteScoringFormat } from "@/actions/scoring-formats";
 
@@ -19,7 +19,7 @@ export default async function ScoringFormatsPage() {
   const formats = await db
     .select()
     .from(scoringFormats)
-    .where(eq(scoringFormats.tenantId, tenant.id));
+    .where(and(eq(scoringFormats.tenantId, tenant.id), isNull(scoringFormats.deletedAt)));
 
   return (
     <div>

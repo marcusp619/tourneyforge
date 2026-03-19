@@ -1,6 +1,6 @@
 import { requireTenant } from "@/lib/tenant";
 import { db, scoringFormats } from "@tourneyforge/db";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import Link from "next/link";
 import { createTournament } from "@/actions/tournaments";
 
@@ -12,7 +12,7 @@ export default async function NewTournamentPage() {
   const formats = await db
     .select()
     .from(scoringFormats)
-    .where(eq(scoringFormats.tenantId, tenant.id));
+    .where(and(eq(scoringFormats.tenantId, tenant.id), isNull(scoringFormats.deletedAt)));
 
   // Default start/end times (tomorrow at 6am–3pm local)
   const tomorrow = new Date();

@@ -1,6 +1,6 @@
 import { requireTenant } from "@/lib/tenant";
 import { db, tournaments, catches, teams, species } from "@tourneyforge/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { verifyCatch, deleteCatch } from "@/actions/catches";
@@ -51,7 +51,7 @@ export default async function TournamentCatchesPage({ params }: Props) {
     .from(catches)
     .innerJoin(teams, eq(teams.id, catches.teamId))
     .innerJoin(species, eq(species.id, catches.speciesId))
-    .where(and(eq(catches.tournamentId, id), eq(catches.tenantId, tenant.id)))
+    .where(and(eq(catches.tournamentId, id), eq(catches.tenantId, tenant.id), isNull(catches.deletedAt)))
     .orderBy(catches.timestamp);
 
   const verifiedCount = rows.filter((r) => r.verified === "true").length;

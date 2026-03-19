@@ -1,6 +1,6 @@
 import { requireTenant } from "@/lib/tenant";
 import { db, sponsors, tournaments } from "@tourneyforge/db";
-import { and, eq, asc } from "drizzle-orm";
+import { and, eq, asc, isNull } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createSponsor, deleteSponsor } from "@/actions/sponsors";
@@ -31,7 +31,7 @@ export default async function SponsorsPage({ params }: Props) {
   const tournamentSponsors = await db
     .select()
     .from(sponsors)
-    .where(and(eq(sponsors.tenantId, tenant.id), eq(sponsors.tournamentId, id)))
+    .where(and(eq(sponsors.tenantId, tenant.id), eq(sponsors.tournamentId, id), isNull(sponsors.deletedAt)))
     .orderBy(asc(sponsors.displayOrder), asc(sponsors.createdAt));
 
   return (
