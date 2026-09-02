@@ -1,7 +1,7 @@
 /**
  * Live Leaderboard Simulator
  *
- * Sets the Spring Bass Classic tournament to "active" and drip-feeds catches
+ * Sets the first seeded tournament to "active" and drip-feeds catches
  * every few seconds so you can watch the leaderboard update in real time.
  *
  * Usage:
@@ -28,6 +28,15 @@ import {
   registrations,
 } from "./schema";
 import { eq, and } from "drizzle-orm";
+import { seedTournaments } from "./seed";
+
+/**
+ * The tournament this simulator drives, taken from the seed itself rather than
+ * re-typed. The name used to be duplicated here as a literal, so renaming it in
+ * the seed silently broke the simulator. Importing `seed.ts` does not seed —
+ * that script gates its writes on being the process entrypoint.
+ */
+const TARGET_TOURNAMENT_NAME = seedTournaments[0]!.name;
 
 const INTERVAL_MS = Number(process.env.INTERVAL_MS ?? 5000);
 const BATCH_SIZE = Number(process.env.BATCH_SIZE ?? 2);
@@ -67,19 +76,21 @@ async function main() {
     process.exit(1);
   }
 
-  // 2. Find Spring Bass Classic
+  // 2. Find the seeded tournament
   const [tournament] = await db
     .select()
     .from(tournaments)
     .where(
       and(
         eq(tournaments.tenantId, tenant.id),
-        eq(tournaments.name, "Spring Bass Classic 2026")
+        eq(tournaments.name, TARGET_TOURNAMENT_NAME)
       )
     )
     .limit(1);
   if (!tournament) {
-    console.error("❌ Tournament 'Spring Bass Classic 2026' not found. Run `pnpm db:seed` first.");
+    console.error(
+      `❌ Tournament '${TARGET_TOURNAMENT_NAME}' not found. Run \`pnpm db:seed\` first.`
+    );
     process.exit(1);
   }
 

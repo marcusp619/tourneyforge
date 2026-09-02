@@ -1,7 +1,9 @@
+import { basename } from "node:path";
 import { db } from "./index";
 import { tenants } from "./schema/tenants";
 import { users } from "./schema/users";
 import { tournaments, scoringFormats } from "./schema/tournaments";
+import type { NewScoringFormat } from "./schema/tournaments";
 import { species } from "./schema/teams-catches";
 import { tenantMembers } from "./schema/tenant-members";
 import { marketplaceSponsors } from "./schema/marketplace";
@@ -60,10 +62,33 @@ const seedUsers = [
   },
 ];
 
-const seedScoringFormats = [
+/**
+ * Fixed ids for the primary tenant's scoring formats.
+ *
+ * Tournaments must be inserted with a real `scoringFormatId` — without one the
+ * leaderboard route in `packages/api/src/routes/leaderboards.ts` falls through to
+ * its no-format branch and ranking is undefined. The ids are pinned here (rather
+ * than left to the column's `defaultRandom()`) so `seedTournaments` below can
+ * reference a format that this seed genuinely creates.
+ *
+ * The seed deletes every scoring format before inserting, so re-seeding cannot
+ * collide on these primary keys.
+ */
+const WEIGHT_FORMAT_ID = "2fa76f7e-c016-47c1-9674-da5c554f742e";
+const LENGTH_FORMAT_ID = "76ffce93-8673-49a4-9d33-455243e74914";
+
+export type SeedScoringFormat = {
+  id: string;
+  name: string;
+  type: "weight" | "length" | "count" | "custom";
+  rules: string;
+};
+
+export const seedScoringFormats: SeedScoringFormat[] = [
   {
+    id: WEIGHT_FORMAT_ID,
     name: "5-Fish Weight Limit",
-    type: "weight" as const,
+    type: "weight",
     rules: JSON.stringify({
       fishLimit: 5,
       measurementUnit: "lbs",
@@ -73,8 +98,9 @@ const seedScoringFormats = [
     }),
   },
   {
+    id: LENGTH_FORMAT_ID,
     name: "CPR Length Format",
-    type: "length" as const,
+    type: "length",
     rules: JSON.stringify({
       fishLimit: 3,
       measurementUnit: "inches",
@@ -84,6 +110,66 @@ const seedScoringFormats = [
     }),
   },
 ];
+
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+
+export type SeedTournament = {
+  name: string;
+  description: string;
+  startDate: Date;
+  endDate: Date;
+  registrationDeadline: Date;
+  status: "draft" | "open" | "active" | "completed";
+  scoringFormatId: string;
+};
+
+/**
+ * Tournament fixtures, always relative to the clock.
+ *
+ * These used to be hard-coded ISO date-string literals, which meant every
+ * seeded tournament silently rotted into the past: the registration page
+ * (`apps/web/src/app/[tenant]/tournaments/[id]/register/page.tsx`) calls
+ * `notFound()` once `registrationDeadline` is behind `new Date()`, so a freshly
+ * seeded database served a 404 on every "Register" link.
+ *
+ * `now` is a parameter so the guard in `scripts/check-seed.ts` can advance the
+ * clock and prove the offsets really are derived from it.
+ */
+export function buildSeedTournaments(now: number = Date.now()): SeedTournament[] {
+  return [
+    {
+      name: "Spring Bass Classic",
+      description: "Season opener on Lake Oahe. Five-fish weight limit, 6am launch.",
+      startDate: new Date(now + 21 * DAY_MS),
+      endDate: new Date(now + 21 * DAY_MS + 9 * HOUR_MS),
+      registrationDeadline: new Date(now + 14 * DAY_MS),
+      status: "open",
+      scoringFormatId: WEIGHT_FORMAT_ID,
+    },
+    {
+      name: "Lake Oahe Shootout",
+      description:
+        "On the water right now. Day-of entries accepted at the ramp until lines out.",
+      startDate: new Date(now - 2 * HOUR_MS),
+      endDate: new Date(now + 6 * HOUR_MS),
+      registrationDeadline: new Date(now + 6 * HOUR_MS),
+      status: "active",
+      scoringFormatId: WEIGHT_FORMAT_ID,
+    },
+    {
+      name: "Summer Showdown",
+      description: "Mid-summer championship. Catch, photo, release — longest three.",
+      startDate: new Date(now + 90 * DAY_MS),
+      endDate: new Date(now + 90 * DAY_MS + 9 * HOUR_MS),
+      registrationDeadline: new Date(now + 83 * DAY_MS),
+      status: "draft",
+      scoringFormatId: LENGTH_FORMAT_ID,
+    },
+  ];
+}
+
+export const seedTournaments: SeedTournament[] = buildSeedTournaments();
 
 const seedSpecies = [
   // Bass
@@ -264,42 +350,35 @@ async function seed() {
   ]);
   console.log(`   ✅ Created tenant memberships`);
 
-  // Insert scoring formats for each tenant
+  // Insert scoring formats for each tenant.
+  // Only the primary tenant's rows carry pinned ids — those are the ones
+  // seedTournaments references. Every other tenant gets database-generated ids.
   console.log("📊 Seeding scoring formats...");
+  const primaryTenant = insertedTenants[0]!;
   for (const tenant of insertedTenants) {
-    await db.insert(scoringFormats).values(
-      seedScoringFormats.map((format) => ({
+    const rows: NewScoringFormat[] = seedScoringFormats.map((format) => {
+      const row: NewScoringFormat = {
         tenantId: tenant.id,
-        ...format,
-      }))
-    );
+        name: format.name,
+        type: format.type,
+        rules: format.rules,
+      };
+      if (tenant.id === primaryTenant.id) row.id = format.id;
+      return row;
+    });
+    await db.insert(scoringFormats).values(rows);
   }
   console.log(`   ✅ Created scoring formats`);
 
-  // Insert sample tournaments
+  // Insert sample tournaments (rebuilt off the clock at insert time)
   console.log("🏆 Seeding tournaments...");
-  const midwestTenant = insertedTenants[0]!;
-  await db.insert(tournaments).values([
-    {
-      tenantId: midwestTenant.id,
-      name: "Spring Bass Classic 2026",
-      description: "Our season opener on Lake Oahe",
-      startDate: new Date("2026-04-15T06:00:00Z"),
-      endDate: new Date("2026-04-15T15:00:00Z"),
-      registrationDeadline: new Date("2026-04-10T23:59:59Z"),
-      status: "open",
-    },
-    {
-      tenantId: midwestTenant.id,
-      name: "Summer Showdown",
-      description: "Mid-summer championship event",
-      startDate: new Date("2026-07-20T06:00:00Z"),
-      endDate: new Date("2026-07-20T15:00:00Z"),
-      registrationDeadline: new Date("2026-07-15T23:59:59Z"),
-      status: "draft",
-    },
-  ]);
-  console.log(`   ✅ Created tournaments`);
+  await db.insert(tournaments).values(
+    buildSeedTournaments().map((tournament) => ({
+      tenantId: primaryTenant.id,
+      ...tournament,
+    }))
+  );
+  console.log(`   ✅ Created ${seedTournaments.length} tournaments`);
 
   // Seed marketplace sponsors (platform-wide)
   console.log("🤝 Seeding marketplace sponsors...");
@@ -313,11 +392,22 @@ async function seed() {
   console.log("   - Admin: admin@tourneyforge.com");
 }
 
-seed()
-  .catch((error) => {
-    console.error("❌ Seed failed:", error);
-    process.exit(1);
-  })
-  .finally(() => {
-    process.exit(0);
-  });
+/**
+ * Only write to the database when this file is the process entrypoint.
+ *
+ * `scripts/check-seed.ts` imports the fixtures above to assert they are still
+ * valid; importing must never issue a DELETE. `import.meta.main` is the
+ * idiomatic Bun spelling but this package typechecks as CommonJS
+ * (`module: NodeNext`, no `"type": "module"`), where tsc rejects `import.meta`
+ * outright with TS1470 — hence argv.
+ */
+if (basename(process.argv[1] ?? "") === "seed.ts") {
+  seed()
+    .catch((error) => {
+      console.error("❌ Seed failed:", error);
+      process.exit(1);
+    })
+    .finally(() => {
+      process.exit(0);
+    });
+}

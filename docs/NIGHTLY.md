@@ -134,33 +134,6 @@ Repeat these in every handoff until a task closes them:
 
 ## Ready — no Docker required
 
-### R2 — Seed data must not expire
-Goal: `packages/db/src/seed.ts` hard-codes dates now in the past, so
-`apps/web/src/app/[tenant]/tournaments/[id]/register/page.tsx:57` calls `notFound()` on
-every seeded tournament — the registration page 404s. Seeded tournaments also never set
-`scoringFormatId`, so `packages/api/src/routes/leaderboards.ts` takes its no-format
-branch and "ranks correctly" is undefined.
-
-Deliver: dates computed from `Date.now()`; one tournament `open` with a future deadline,
-one `active`; every seeded tournament assigned a real `scoringFormatId`.
-
-Verify:
-```bash
-source scripts/verify-lib.sh
-# no date literal in ANY quoting style — the previous regex only caught double quotes
-# '.' matches any quote char, so single/double/backtick literals are all caught
-must_not_match 'new Date\(.20[0-9]{2}-' packages/db/src/seed.ts
-# assert the actual values, not their spelling:
-timeout 120 bun run scripts/check-seed.ts
-```
-`scripts/check-seed.ts` is part of this task's deliverable. It must import the seed's
-tournament definitions and assert: every `registrationDeadline > Date.now()`, at least
-one `status === "open"` and one `status === "active"`, and every `scoringFormatId`
-non-null. Grepping for the string `scoringFormatId` is not enough — `scoringFormatId:
-null` contains it.
-
----
-
 ### R3 — Stop hand-maintaining types that mirror the schema  **(large)**
 Goal: `packages/types/src/index.ts` hand-writes interfaces duplicating the Drizzle
 schema, labelled *"will be synced with Drizzle schema."* It never was — it silently lost
@@ -449,6 +422,17 @@ _(move tasks here with the reason they stopped and what would unblock them)_
   Zod 4's RFC 9562 enforcement. Detail in `docs/ideas/proving-harness.md`.
   **Correction:** left `bun = "latest"` in `mise.toml` while CI pinned `1.4.0`; the
   commit message and `proving-harness.md` both overstated that pin. Fixed in `32ce1ea`.
+- **R2 — Seed data must not expire.** `%%SHA%%`. `packages/db/src/seed.ts` hard-coded
+  ISO date literals, so every seeded tournament's `registrationDeadline` was in the past
+  and the public registration page called `notFound()` on all of them. Dates are now
+  offsets from `Date.now()` via `buildSeedTournaments(now)`; three tournaments seeded
+  (`open`, `active`, `draft`), each with a pinned `scoringFormatId` that references a
+  scoring format the seed itself inserts. New guard `scripts/check-seed.ts` imports the
+  fixtures (no database — `postgres()` is lazy, and `seed.ts` now gates its writes on
+  being the process entrypoint) and asserts deadlines, statuses, format ids that
+  actually resolve, and that advancing the clock a year moves every date a year.
+  `packages/db/src/simulate-leaderboard.ts` now reads the tournament name from the seed
+  instead of duplicating the literal.
 - **R1 — Make the documentation true.** `090a856`, completed `a86d24b`. Expo SDK 52→55
   (6 places incl. `apps/mobile/README.md`, which the original check did not look at),
   Next.js 15→16, RN 0.83.0→0.83.2, a gotcha citing a `packages/api/Dockerfile` that does
