@@ -15,6 +15,11 @@ interface Tournament {
   startDate: string;
   endDate: string;
   entryFee: number;
+  // Discovery is cross-club, so a bare tournament name is ambiguous — two clubs
+  // can both run a "Spring Classic". The club is what makes a row identifiable.
+  tenantSlug: string;
+  tenantName: string;
+  tenantLogoUrl: string | null;
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -95,7 +100,7 @@ export default function TournamentsScreen() {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
         <Text style={styles.title}>TourneyForge</Text>
-        <Text style={styles.subtitle}>Fishing Tournaments</Text>
+        <Text style={styles.subtitle}>Tournaments from every club</Text>
       </View>
       <FlatList
         data={tournaments}
@@ -117,6 +122,9 @@ export default function TournamentsScreen() {
               onPress={() => router.push(`/tournament/${item.id}`)}
               activeOpacity={0.7}
             >
+              <Text style={styles.cardClub} numberOfLines={1}>
+                {item.tenantName}
+              </Text>
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
                 <View style={[styles.badge, { backgroundColor: statusBg }]}>
@@ -144,6 +152,7 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, color: "#6b7280", marginTop: 2 },
   list: { padding: 16, gap: 12 },
   card: { backgroundColor: "#fff", borderRadius: 12, padding: 16, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  cardClub: { fontSize: 12, fontWeight: "700", color: "#1d6b3e", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 },
   cardHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
   cardTitle: { flex: 1, fontSize: 16, fontWeight: "700", color: "#1a1a1a" },
   badge: { borderRadius: 99, paddingHorizontal: 8, paddingVertical: 3 },

@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { db } from "@tourneyforge/db";
 import { tenants, tournaments, teams, scoringFormats } from "@tourneyforge/db";
 import { resolveTheme } from "@tourneyforge/themes";
-import { eq, and, ne, or } from "drizzle-orm";
+import { eq, and, ne, or, isNull } from "drizzle-orm";
 
 export const publicRouter = new Hono();
 
@@ -71,7 +71,8 @@ publicRouter.get("/tenants/:slug/tournaments", async (c) => {
     .where(
       and(
         eq(tournaments.tenantId, tenant.id),
-        ne(tournaments.status, "draft")
+        ne(tournaments.status, "draft"),
+        isNull(tournaments.deletedAt)
       )
     );
 
@@ -98,9 +99,13 @@ publicRouter.get("/tournaments/:id", async (c) => {
       entryFee: tournaments.entryFee,
       maxTeams: tournaments.maxTeams,
       scoringFormatId: tournaments.scoringFormatId,
+      tenantSlug: tenants.slug,
+      tenantName: tenants.name,
+      tenantLogoUrl: tenants.logoUrl,
     })
     .from(tournaments)
-    .where(eq(tournaments.id, id))
+    .innerJoin(tenants, eq(tournaments.tenantId, tenants.id))
+    .where(and(eq(tournaments.id, id), isNull(tournaments.deletedAt)))
     .limit(1);
 
   if (!tournament) {
@@ -124,6 +129,12 @@ publicRouter.get("/tournaments/:id", async (c) => {
  * GET /api/public/tournaments
  * Returns all open and active tournaments across all tenants.
  * Used by the mobile app tournaments tab.
+ *
+ * Discovery is deliberately cross-club (decided 2026-09-02), so every row MUST
+ * carry its club's identity — otherwise an angler sees a list of tournaments
+ * with no way to tell whose event is whose. The innerJoin is safe: tenantId is
+ * notNull with an FK, so a tournament without a tenant cannot exist, and the
+ * join keeps these fields non-nullable under exactOptionalPropertyTypes.
  */
 publicRouter.get("/tournaments", async (c) => {
   const allTournaments = await db
@@ -134,9 +145,18 @@ publicRouter.get("/tournaments", async (c) => {
       startDate: tournaments.startDate,
       endDate: tournaments.endDate,
       entryFee: tournaments.entryFee,
+      tenantSlug: tenants.slug,
+      tenantName: tenants.name,
+      tenantLogoUrl: tenants.logoUrl,
     })
     .from(tournaments)
-    .where(or(eq(tournaments.status, "open"), eq(tournaments.status, "active")));
+    .innerJoin(tenants, eq(tournaments.tenantId, tenants.id))
+    .where(
+      and(
+        or(eq(tournaments.status, "open"), eq(tournaments.status, "active")),
+        isNull(tournaments.deletedAt)
+      )
+    );
 
   return c.json({ data: allTournaments });
 });

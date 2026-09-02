@@ -10,9 +10,10 @@ TourneyForge is a multi-tenant SaaS platform for fishing tournament management. 
 > **What "complete" means here.** Until 2026-09-01 these phases were marked complete
 > while CI had been red for eight consecutive runs (main included) and 20 of the 28 API
 > tests were failing. "Complete" in the list below means *the code was written*, not
-> that anyone has run it end to end. Known gaps that survive: anglers must paste a raw
-> tournament UUID into the mobile app, no web UI creates a catch, and there are no
-> database migrations. Tracked in `docs/NIGHTLY.md`.
+> that anyone has run it end to end. CI on `main` first went green on 2026-09-02
+> (run `33626804701`). Known gaps that survive: anglers must paste a raw tournament
+> UUID into the mobile app, no web UI creates a catch, only one seeded club has any
+> tournaments, and there are no database migrations. Tracked in `docs/NIGHTLY.md`.
 
 **Completed:**
 - ✅ Phase 0: Foundation (monorepo, database, auth, CI/CD, seed data)
@@ -248,6 +249,17 @@ No Docker or local Postgres needed — `@tourneyforge/db` is mocked via `mock.mo
 - `packages/api/package.json` — added `"test"` script
 
 Run with: `cd packages/api && bun test`
+
+### Angler Discovery (decided 2026-09-02)
+Discovery in the mobile app is **cross-club**: `GET /api/public/tournaments` returns
+open/active tournaments from every tenant, with no club-selection step. Because of that,
+every tournament shown to an angler must carry its club — the route `innerJoin`s
+`tenants` and returns `tenantSlug` / `tenantName` / `tenantLogoUrl`, and both the list
+and detail screens render the club name. Rationale and the rejected alternative are in
+`docs/NIGHTLY.md` under **Decisions**.
+
+Public routes filter `isNull(tournaments.deletedAt)`. Note the asymmetry: `teams` has no
+`deletedAt` column, so `GET /api/public/teams` correctly has no such filter.
 
 ### Known Gaps (from quality audit — prioritized backlog)
 **High** (done ✅):

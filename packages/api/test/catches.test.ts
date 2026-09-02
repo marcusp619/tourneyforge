@@ -55,7 +55,13 @@ mock.module("@tourneyforge/db", () => {
   // Include all exports used by any route in this test suite so that Bun's
   // named-import validation passes regardless of which mock is active when
   // test files share a module registry.
-  return { db: mockDb, catches: {}, tournaments: {}, teams: {}, species: {}, registrations: {}, users: {} };
+  // Every export used by ANY route under test in this directory must appear
+  // here: mock.module shares one registry across test files, so whichever
+  // mock is active must satisfy Bun's named-import validation for all of them.
+  return {
+    db: mockDb, catches: {}, tournaments: {}, teams: {}, species: {},
+    registrations: {}, users: {}, tenants: {}, scoringFormats: {},
+  };
 });
 
 // ─── App setup ────────────────────────────────────────────────────────────────

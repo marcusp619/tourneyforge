@@ -138,9 +138,36 @@ Repeat these in every handoff until a task closes them:
   and `leaderboard.tsx`. No harness task covers mobile end to end. See R4.
 - **No web UI creates a catch.** `apps/web/src/actions/catches.ts` exports only
   `verifyCatch`, `aiVerifyCatch`, `deleteCatch`. See G4b.
-- **`GET /api/public/tournaments` has no tenant filter and no `deletedAt` filter**
-  (`packages/api/src/routes/public.ts`). It returns every club's tournaments. See R5.
+- **Only one seeded club has any tournaments.** `midwest-bass` owns all 3;
+  `carolina-kayak` and `lake-norman-bass` own none. So the cross-club discovery list has
+  never actually shown more than one club, and R4's group-by-club picker has nothing to
+  group. See R8. (The `deletedAt` leak on this route is closed — R5.)
 - **No migrations exist.** Schema has only ever been `db:push`'d. See G7.
+
+---
+
+## Decisions — settled, do not re-litigate
+
+An agent with fresh context will otherwise re-open these every night.
+
+### 2026-09-02 — Angler discovery is cross-club, and every row is club-attributed
+`GET /api/public/tournaments` keeps returning open/active tournaments from **all** clubs.
+There is no club-selection wall in the mobile app. In exchange, every tournament the
+angler sees — list row, detail screen, and R4's picker — **must carry the club name**,
+because two clubs can each run a "Spring Classic" and a bare tournament name is
+ambiguous. The endpoint therefore `innerJoin`s `tenants` and returns
+`tenantSlug` / `tenantName` / `tenantLogoUrl`.
+
+Rejected: per-club discovery (angler joins a club first). It matches the white-label
+positioning more exactly but adds a club-selection flow, club persistence, and a director
+invite mechanism, for a product with zero users. Revisit if a real director objects to
+appearing beside other clubs.
+
+### 2026-09-02 — The baseline lives on `main`
+`claude/restore-green-baseline` was fast-forwarded into `main` and pushed. CI run
+`33626804701` is the **first green run** on this repo after 8 consecutive failures —
+Type Check, Lint, Test/Scoring Engine and Test/API all pass. `main` is now a trustworthy
+starting point; keep it that way.
 
 ---
 
@@ -188,6 +215,14 @@ Deliver: a tournament picker on both screens, plus a jest-expo test runner
 (`apps/mobile` currently has no `test` script, no jest config, no
 `@testing-library/react-native` — standing that up is part of this task).
 
+**The picker groups by club and shows the club name on every option.** Discovery is
+cross-club (see Decisions, 2026-09-02) and `GET /api/public/tournaments` already returns
+`tenantSlug` / `tenantName` / `tenantLogoUrl` for exactly this purpose. A flat list of
+bare tournament names is not an acceptable outcome of this task.
+
+**Do R8 first, or this task cannot be verified.** With one seeded club there is nothing
+to group and a grouped picker is indistinguishable from a flat one.
+
 Verify:
 ```bash
 source scripts/verify-lib.sh
@@ -211,30 +246,32 @@ one is chosen. No Detox, no simulator.
 
 ---
 
-### R5 — soft-deleted tournaments are publicly visible
-Goal: the `GET /api/public/tournaments` handler in `packages/api/src/routes/public.ts`
-filters only on `status`, with **no `isNull(tournaments.deletedAt)`**, so a tournament a
-director deleted still appears in public listings and in the mobile app. The same
-omission is in `GET /api/public/tournaments/:id` and `GET /api/public/teams`.
+### R8 — Seed tournaments for more than one club
+Goal: `midwest-bass` owns all three seeded tournaments; `carolina-kayak` and
+`lake-norman-bass` own none (verified 2026-09-02 against the docker stack). The mobile
+tournaments tab is a cross-club list, so with this seed it is a cross-club list of
+exactly one club — the attribution added for the discovery decision is invisible, and
+R4's group-by-club picker cannot be told apart from a flat list.
 
-**Scope: the soft-delete leak only.** That this endpoint returns tournaments across all
-tenants appears to be intentional — its own docstring reads *"Returns all open and active
-tournaments across all tenants. Used by the mobile app tournaments tab"*, and the route is
-unauthenticated, so there is no tenant in scope to filter by. Do **not** add a tenant
-filter: that is a product decision about whether angler discovery is per-club or
-cross-club, and it is nobody's to make unilaterally. Raise it in the handoff as a
-question. (R4 builds the angler's picker on this endpoint, so the answer matters.)
+Give at least two clubs an `open` or `active` tournament in `packages/db/src/seed.ts`,
+reusing `buildSeedTournaments(now)` so the dates stay clock-derived (see R2). Each new
+tournament needs a real `scoringFormatId` belonging to *its own* tenant — do not reuse
+midwest-bass's format across tenants; `scripts/check-seed.ts` resolves the reference and
+a cross-tenant one is a tenant-scope bug, not a shortcut.
 
 Verify:
 ```bash
 source scripts/verify-lib.sh
-# `must_match 'deletedAt' <file>` is not enough — public.ts already filters deletedAt in
-# the unrelated, already-correct /tenants/:slug/tournaments handler, so the grep passes
-# while the leaky endpoint is untouched. Assert on the response instead.
-must_match 'isNull\(tournaments\.deletedAt\)' packages/api/src/routes/public.ts
-(cd packages/api && timeout 300 bun test)   # `timeout cd ...` is rc 127 — cd is a
-                                            # shell builtin and cannot be exec'd
+timeout 300 bun run scripts/check-seed.ts
+# the real assertion — against the running stack, not the source:
+docker exec -i tourneyforge-postgres-1 psql -U tf -d tourneyforge -tAc \
+  "SELECT count(DISTINCT tr.tenant_id) FROM tournaments tr
+    WHERE tr.status IN ('open','active') AND tr.deleted_at IS NULL;"
+#   MUST be >= 2. Assert on the number; do not eyeball it.
+curl -s localhost:3001/api/public/tournaments \
+  | jq -e '[.data[].tenantSlug] | unique | length >= 2'
 ```
+A source grep for a second tenant's name proves nothing — the row has to reach the API.
 
 ---
 
@@ -487,6 +524,24 @@ _(move tasks here with the reason they stopped and what would unblock them)_
 ---
 
 ## Done
+
+- **R5 — Soft-deleted tournaments were publicly visible; discovery is now
+  club-attributed.** `GET /api/public/tournaments`, `/tournaments/:id` and
+  `/tenants/:slug/tournaments` now filter `isNull(tournaments.deletedAt)`, and the two
+  cross-club routes `innerJoin` `tenants` to return `tenantSlug` / `tenantName` /
+  `tenantLogoUrl`. Mobile list and detail screens render the club.
+  **Correction to this task's original text:** it claimed the same omission existed in
+  `GET /api/public/teams`. It does not — the `teams` table has no `deletedAt` column
+  (`packages/db/src/schema/teams-catches.ts:8`); soft deletes landed on catches,
+  tournaments, scoringFormats, sponsors and tournamentDivisions only. Writing
+  `isNull(teams.deletedAt)` would not typecheck. `packages/api/test/public.test.ts` now
+  pins that asymmetry so nobody "fixes" it by symmetry.
+  Proven against the docker stack, not just asserted: with the pre-fix code a
+  soft-deleted tournament still appeared in the list and its detail route returned
+  **200**; with the fix it disappears and returns **404**. Both new unit tests were
+  mutation-checked (strip the `isNull`, strip the `innerJoin` — each turns one red),
+  because the mocked db ignores WHERE clauses and a naive "row is absent" assertion
+  would pass with the filter deleted.
 
 - **R6 — Tenant routing never worked.** `bd71194`. `resolveTenant()` read
   `req.nextUrl.hostname`, which is the server's *bind address*, not the request host.

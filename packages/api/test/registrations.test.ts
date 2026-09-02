@@ -60,6 +60,8 @@ mock.module("@tourneyforge/db", () => {
     catches: {},
     tournaments: {},
     species: {},
+    tenants: {},
+    scoringFormats: {},
   };
 });
 

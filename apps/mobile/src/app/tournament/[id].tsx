@@ -20,6 +20,9 @@ interface TournamentDetail {
   entryFee: number;
   maxTeams: number | null;
   scoringFormatType: string | null;
+  tenantSlug: string;
+  tenantName: string;
+  tenantLogoUrl: string | null;
 }
 
 interface LeaderboardEntry {
@@ -151,6 +154,10 @@ export default function TournamentDetailScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <ScrollView contentContainerStyle={styles.scroll}>
+        {/* Which club is running this — the nav title only carries the
+            tournament name, which is ambiguous across clubs. */}
+        <Text style={styles.club}>{tournament.tenantName}</Text>
+
         {/* Status badge */}
         <View style={[styles.badge, { backgroundColor: statusBg, alignSelf: "flex-start" }]}>
           <Text style={[styles.badgeText, { color: statusColor }]}>
@@ -269,6 +276,7 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 14, color: "#dc2626", textAlign: "center", marginBottom: 12 },
   retryBtn: { backgroundColor: GREEN, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
   retryBtnText: { color: "#fff", fontWeight: "700" },
+  club: { fontSize: 13, fontWeight: "700", color: "#1d6b3e", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
   badge: { borderRadius: 99, paddingHorizontal: 12, paddingVertical: 5, marginBottom: 20 },
   badgeText: { fontSize: 13, fontWeight: "700" },
   infoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 20 },
