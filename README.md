@@ -4,7 +4,11 @@ Multi-tenant SaaS platform for fishing tournament management. Tournament directo
 
 ## Current Status
 
-All 7 development phases are complete (see [CLAUDE.md](./CLAUDE.md) for the full roadmap).
+Code has been written for all 7 development phases (see [CLAUDE.md](./CLAUDE.md) for the
+full roadmap). That is not the same as working: the table below tracks what was *built*, and
+`docs/NIGHTLY.md` tracks what has actually been *proven*. Known gaps — anglers must paste a
+raw tournament UUID into the mobile app, no web UI creates a catch, and the database has no
+migrations.
 
 | Phase | Feature Set | Status |
 |-------|-------------|--------|
@@ -24,8 +28,8 @@ All 7 development phases are complete (see [CLAUDE.md](./CLAUDE.md) for the full
 ```
 tourneyforge/
 ├── apps/
-│   ├── web/        # Next.js 15 — tenant public sites + director dashboard
-│   └── mobile/     # Expo SDK 52 — angler mobile app (iOS + Android)
+│   ├── web/        # Next.js 16 — tenant public sites + director dashboard
+│   └── mobile/     # Expo SDK 55 — angler mobile app (iOS + Android)
 └── packages/
     ├── api/        # Hono on Bun — REST API server
     ├── db/         # Drizzle ORM — schema, migrations, seed
@@ -139,7 +143,7 @@ pnpm turbo run dev --filter=@tourneyforge/mobile   # Expo dev server
 - Upstash Redis for leaderboard caching
 
 ### Mobile App (Phase 5)
-- Expo SDK 52 + Expo Router
+- Expo SDK 55 + Expo Router
 - Clerk auth (sign-in/sign-up)
 - Tournament browser, live leaderboard, catch submission with GPS
 - EAS Build config for iOS + Android

@@ -5,7 +5,14 @@ TourneyForge is a multi-tenant SaaS platform for fishing tournament management. 
 
 ## Development Status
 
-**Current Phase:** Complete through Phase 7
+**Current Phase:** Code written through Phase 7. See the caveat below.
+
+> **What "complete" means here.** Until 2026-09-01 these phases were marked complete
+> while CI had been red for eight consecutive runs (main included) and 20 of the 28 API
+> tests were failing. "Complete" in the list below means *the code was written*, not
+> that anyone has run it end to end. Known gaps that survive: anglers must paste a raw
+> tournament UUID into the mobile app, no web UI creates a catch, and there are no
+> database migrations. Tracked in `docs/NIGHTLY.md`.
 
 **Completed:**
 - ✅ Phase 0: Foundation (monorepo, database, auth, CI/CD, seed data)
@@ -29,8 +36,8 @@ TourneyForge is a multi-tenant SaaS platform for fishing tournament management. 
 ```
 tourneyforge/
 ├── apps/
-│   ├── web/        # Next.js 15 — public tenant sites + admin dashboard
-│   └── mobile/     # Expo SDK 52 — angler mobile app
+│   ├── web/        # Next.js 16 — public tenant sites + admin dashboard
+│   └── mobile/     # Expo SDK 55 — angler mobile app
 ├── packages/
 │   ├── api/        # Hono on Bun — API server
 │   ├── db/         # Drizzle ORM — schema, migrations, seed
@@ -94,8 +101,8 @@ bun test --watch                # watch mode
 | Layer | Technology |
 |-------|-----------|
 | Monorepo | Turborepo |
-| Frontend (Web) | Next.js 15 (App Router) |
-| Frontend (Mobile) | Expo SDK 52 + Expo Router |
+| Frontend (Web) | Next.js 16 (App Router) |
+| Frontend (Mobile) | Expo SDK 55 + Expo Router |
 | Shared UI | Tamagui |
 | API | Hono on Bun |
 | ORM | Drizzle ORM |
@@ -163,7 +170,7 @@ NEXT_PUBLIC_API_URL                   # e.g., https://api.tourneyforge.com
 
 ## Critical Constraints / Gotchas
 
-1. **`.npmrc` must exist before `pnpm install`** — `node-linker=hoisted` is required for Expo SDK 52. If you install first and add it after, delete `node_modules` and reinstall.
+1. **`.npmrc` must exist before `pnpm install`** — `node-linker=hoisted` is required for Expo SDK 55. If you install first and add it after, delete `node_modules` and reinstall.
 
 2. **`next.config.js` must be CommonJS** — Keep as `.js` with `module.exports`. `@tamagui/next-plugin` requires CJS. Never rename to `.mjs` or `.ts`.
 
@@ -177,9 +184,9 @@ NEXT_PUBLIC_API_URL                   # e.g., https://api.tourneyforge.com
 
 7. **Turbo 2.x uses `tasks` key** — Not `pipeline`. Schema validation fails with the old key.
 
-8. **API Dockerfile builds from monorepo root** — Run `docker build -f packages/api/Dockerfile .` from the repo root, not from inside the package.
+8. **The API has no Dockerfile yet** — Nothing in `packages/api` is container-built today, and there is no Fly or Vercel config in the repo. When one is added it must build from the monorepo root, since the package depends on workspace siblings.
 
-9. **React / React Native versions are pinned** — Match Expo SDK 55's exact peer requirements (React 19.2.4, RN 0.83.0). Do not float these with `^` in the mobile app.
+9. **React / React Native versions are pinned** — Match Expo SDK 55's exact peer requirements (React 19.2.4, RN 0.83.2). Do not float these with `^` in the mobile app.
 
 10. **Expo SDK 55 requires New Architecture** — `newArchEnabled: true` is mandatory in `app.json`. The Legacy Architecture flag is removed.
 
