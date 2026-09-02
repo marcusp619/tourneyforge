@@ -20,7 +20,10 @@ as failure. Use them.
 2. Check `main`:
    ```bash
    source scripts/verify-lib.sh
-   SHA=$(capture "origin/main sha" "git rev-parse origin/main")
+   timeout 60 git fetch --quiet origin main   # origin/main is a stale LOCAL ref
+                                              # otherwise: after a human merges the fix
+                                              # this gate reports red forever
+   capture_into SHA "origin/main sha" "git rev-parse origin/main"
    timeout 60 gh run list --branch main --limit 1 --json headSha,conclusion \
      --jq '"\(.[0].headSha) \(.[0].conclusion)"' | grep -q "$SHA success" \
      || echo "MAIN NOT VERIFIED GREEN AT $SHA"
@@ -57,9 +60,18 @@ If the task adds a dependency, the lockfile must be in that commit or
 ### A Verify block that is green before you start is a broken task
 
 Run the Verify block **first, before changing anything.** If it already passes, the task
-is mis-specified: it cannot prove its own Goal. **Record that as the finding, propose a
-replacement Verify block in the handoff, and move to the next task.** Do not report it
-as done.
+is mis-specified: it cannot prove its own Goal. **Record that as the finding and move to
+the next task.** Do not report it as done.
+
+You may *propose* a replacement Verify block in the handoff, but never adopt one the same
+night and never a weaker one. A proposal must quote the verbatim pre-change output proving
+the block was already green, and is marked for human approval. Otherwise "mis-specified"
+becomes the loophole that retires any hard task.
+
+The pre-change run must fail on an assertion **about the product**, not on a missing
+deliverable. Most tasks here gate on a file they are meant to create, so red-on-arrival is
+guaranteed and proves nothing by itself — quote the specific product assertion that
+failed.
 
 This rule exists because it already happened: R1 was completed and committed, its five
 checks passed, and it sat in Ready — a subsequent agent would have "completed" it a
@@ -157,7 +169,7 @@ Verify:
 source scripts/verify-lib.sh
 # every mirrored shape gone, as interface OR type alias:
 for T in Tenant Tournament ScoringFormat User Team Registration Catch; do
-  must_not_match "^export (interface|type) $T\b" packages/types/src/index.ts
+  must_not_match "^export (interface|type) $T\b" packages/types/src
 done
 must_not_match '"@tourneyforge/db"' packages/types/package.json   # no new cycle
 timeout 600 pnpm run check                                        # all 9 packages
@@ -199,33 +211,78 @@ one is chosen. No Detox, no simulator.
 
 ---
 
-### R5 — `GET /api/public/tournaments` leaks across tenants
-Goal: `packages/api/src/routes/public.ts` selects every `open|active` tournament with no
-tenant filter and no `isNull(deletedAt)` filter. Every club sees every other club's
-tournaments — and R4 is about to build the angler's picker on top of it.
+### R5 — soft-deleted tournaments are publicly visible
+Goal: the `GET /api/public/tournaments` handler in `packages/api/src/routes/public.ts`
+filters only on `status`, with **no `isNull(tournaments.deletedAt)`**, so a tournament a
+director deleted still appears in public listings and in the mobile app. The same
+omission is in `GET /api/public/tournaments/:id` and `GET /api/public/teams`.
+
+**Scope: the soft-delete leak only.** That this endpoint returns tournaments across all
+tenants appears to be intentional — its own docstring reads *"Returns all open and active
+tournaments across all tenants. Used by the mobile app tournaments tab"*, and the route is
+unauthenticated, so there is no tenant in scope to filter by. Do **not** add a tenant
+filter: that is a product decision about whether angler discovery is per-club or
+cross-club, and it is nobody's to make unilaterally. Raise it in the handoff as a
+question. (R4 builds the angler's picker on this endpoint, so the answer matters.)
 
 Verify:
 ```bash
 source scripts/verify-lib.sh
+# `must_match 'deletedAt' <file>` is not enough — public.ts already filters deletedAt in
+# the unrelated, already-correct /tenants/:slug/tournaments handler, so the grep passes
+# while the leaky endpoint is untouched. Assert on the response instead.
 must_match 'isNull\(tournaments\.deletedAt\)' packages/api/src/routes/public.ts
-must_match 'tenantId' packages/api/src/routes/public.ts
-timeout 300 cd packages/api && bun test   # add a case: two tenants, each sees only its own
+(cd packages/api && timeout 300 bun test)   # `timeout cd ...` is rc 127 — cd is a
+                                            # shell builtin and cannot be exec'd
 ```
 
 ---
 
-## Gated — a human must act first
+### R7 — The results archive seeds empty
+Goal: R2 made every seeded `registrationDeadline` fall in the future, which by
+construction makes a `completed` tournament unseedable — so the public `/results`
+archive, `/[tenant]/results`, has nothing to show. R2's own handoff flagged this and
+correctly refused to fix it by editing its own Verify block.
 
-Not "Blocked" — these are ready to run the moment someone runs two commands. Do not
-retire them.
+Deliver: seed at least one `completed` tournament with past dates and finished catches,
+and split the deadline rule so it applies to open/draft tournaments only.
 
-> **Human action required, must be repeated in every handoff:**
-> ```bash
-> sudo systemctl enable --now docker   # daemon is inactive AND disabled
-> sudo usermod -aG docker $USER        # $USER is in: mark wheel
-> ```
-> then log out and back in. Check with `docker compose ps` before starting any G task;
-> if it fails, take a Ready task instead.
+Verify:
+```bash
+source scripts/verify-lib.sh
+timeout 120 bun run scripts/check-seed.ts        # must be extended, not weakened:
+                                                 # every OPEN-or-DRAFT deadline future,
+                                                 # AND >=1 completed with past dates
+timeout 300 pnpm dev:up
+capture_into SLUG "tenant with a completed tournament" "timeout 30 docker compose exec -T postgres \
+  psql -U tf -d tourneyforge -tAc \"select n.slug from tenants n join tournaments t on t.tenant_id=n.id where t.status='completed' limit 1\""
+must_contain_literal "results archive is not empty" \
+  "timeout 60 curl -fsS -H \"Host: ${SLUG}.localhost\" localhost:3000/results" "Final"
+```
+Guardrail: extending `check-seed.ts` to express a more precise rule is correct.
+Loosening it so a past deadline stops being an error is not.
+
+---
+
+## G tasks — Docker required
+
+**Docker is available as of 2026-09-01.** The daemon is `active`/`enabled` and the user
+is in the `docker` group. A shell started before that change does not carry the group and
+`sg` is not installed here, so if `docker compose ps` fails with `permission denied`,
+wrap docker commands:
+
+```bash
+newgrp docker <<'CMD'
+  docker compose ps
+CMD
+```
+
+**Never assert a blocker in prose.** Probe it and quote the real stderr:
+```bash
+timeout 30 docker compose ps 2>&1 | head -3   # if this works, there is no blocker
+```
+The human reads the log and nothing else — restating a cleared blocker wastes the one
+channel you have.
 
 ### G1 — Prove the offline stack runs the product
 Goal: establish the docker stack actually serves this application. Note the health
@@ -234,23 +291,30 @@ endpoint is `GET /`, not `/api/health`, and nothing starts the API server for yo
 Verify:
 ```bash
 source scripts/verify-lib.sh
-timeout 300 docker compose up -d --wait      # --wait, not a grep for "healthy":
-                                             # `grep -q healthy` matches "unhealthy",
-                                             # and mailpit/minio-setup declare no
-                                             # healthcheck at all
+# --wait must NAME the long-running services. Bare `docker compose up -d --wait`
+# exits 1 here: minio-setup is a one-shot `mc` container that exits 0 after creating
+# the bucket, and --wait counts any exited dependency as failure. Measured.
+# (`grep -q healthy` is also wrong — it matches "unhealthy".)
+timeout 300 docker compose up -d --wait postgres redis minio mailpit
 timeout 120 pnpm db:push --force             # drizzle-kit prompts on destructive
                                              # diffs and will hang unattended
 timeout 120 pnpm db:seed
-(cd packages/api && bun run src/index.ts & echo $! > /tmp/api.pid)
-trap 'kill "$(cat /tmp/api.pid)" 2>/dev/null' EXIT
+W=$(workdir)                       # never hardcode /tmp paths: a crashed run leaves
+                                   # stale pids and stale backups behind
+cd packages/api && bun run src/index.ts & API_PID=$!   # $! must be bun's own pid;
+cd - >/dev/null                                        # `(cd x && cmd &)` captures the
+trap 'kill "$API_PID" 2>/dev/null; rm -rf "$W"' EXIT   # SUBSHELL pid and orphans bun
 timeout 60 bash -c 'until curl -fsS localhost:3001/ >/dev/null 2>&1; do sleep 2; done'
-must_contain_literal "health" "curl -fsS localhost:3001/" '"status":"ok"'
+must_contain_literal "health" "timeout 30 curl -fsS localhost:3001/" '"status":"ok"'
 # the seed actually landed:
-ROWS=$(capture "tournament count" "timeout 30 docker compose exec -T postgres \
-  psql -U tf -d tourneyforge -tAc 'select count(*) from tournaments'")
-[ "$ROWS" -ge 1 ] || fail "seed produced no tournaments"
-NAME=$(capture "seeded tournament name" "timeout 30 docker compose exec -T postgres \
-  psql -U tf -d tourneyforge -tAc 'select name from tournaments limit 1'")
+capture_into ROWS "tournament count" "timeout 30 docker compose exec -T postgres \
+  psql -U tf -d tourneyforge -tAc 'select count(*) from tournaments'"
+[ "$ROWS" -ge 1 ] || die "seed produced no tournaments"
+# ONE joined, ordered query. Two independent `limit 1` queries can pick a tenant with no
+# tournaments, or a `draft` one the public endpoint filters out — the assertion then fails
+# on a working product and the agent's fix is to weaken it.
+capture_into NAME "publicly visible seeded tournament" "timeout 30 docker compose exec -T postgres \
+  psql -U tf -d tourneyforge -tAc \"select name from tournaments where status in ('open','active') order by name limit 1\
 must_contain_literal "public list" "timeout 30 curl -fsS localhost:3001/api/public/tournaments" "$NAME"
 ```
 `capture` fails on empty output, so the name assertion can never degrade into
@@ -299,13 +363,18 @@ must_match 'no cloud accounts' README.md
 must_match '\.env\.local\.docker' README.md
 must_match 'docker' .env.example
 timeout 300 pnpm dev:up
-SLUG=$(capture "seeded tenant slug" "timeout 30 docker compose exec -T postgres \
-  psql -U tf -d tourneyforge -tAc 'select slug from tenants limit 1'")
-NAME=$(capture "seeded tournament" "timeout 30 docker compose exec -T postgres \
-  psql -U tf -d tourneyforge -tAc 'select name from tournaments limit 1'")
+# One joined query: the tenant MUST be the one that owns a publicly visible tournament.
+capture_into SLUG "tenant owning a public tournament" "timeout 30 docker compose exec -T postgres \
+  psql -U tf -d tourneyforge -tAc \"select n.slug from tenants n join tournaments t on t.tenant_id=n.id where t.status in ('open','active') order by n.slug limit 1\""
+capture_into NAME "its tournament" "timeout 30 docker compose exec -T postgres \
+  psql -U tf -d tourneyforge -tAc \"select t.name from tournaments t join tenants n on n.id=t.tenant_id where n.slug='\$SLUG' and t.status in ('open','active') order by t.name limit 1\
 must_contain_literal "tenant page renders seeded data" \
   "timeout 60 curl -fsS -H 'Host: ${SLUG}.localhost' localhost:3000/tournaments" "$NAME"
-must_not_match 'sk_live_|sk_test_[A-Za-z0-9]{20}|whsec_|pk_live_' $(git ls-files)
+# Value-shaped, not bare prefixes, and excluding this file (which quotes the pattern)
+# and the .env.docker templates (whose commented placeholders are the point).
+SECRETS=$(git ls-files | grep -vE '^docs/NIGHTLY\.md$|\.env\.docker$' \
+  | xargs grep -lE 'sk_live_[A-Za-z0-9]{16,}|whsec_[A-Za-z0-9]{16,}|pk_live_[A-Za-z0-9]{16,}' || true)
+[ -z "$SECRETS" ] || die "possible committed secret in: $SECRETS"
 ```
 Guardrail: the marketing page at `/` renders with no database and contains the word
 "TourneyForge". Asserting on it proves nothing — assert on a tenant page.
@@ -385,7 +454,9 @@ must_not_match 'paths:' .github/workflows/ci.yml     # no narrowed trigger
 cp packages/scoring/src/index.ts /tmp/scoring.bak
 trap 'cp /tmp/scoring.bak packages/scoring/src/index.ts' EXIT
 sed -i 's/b - a/a - b/' packages/scoring/src/index.ts
-must_not_match '(test|spec)' "$(git diff --name-only)"   # mutation touched no test file
+changed_files_exclude '(test|spec)'   # by FILENAME. must_not_match on "$(git diff
+                                      # --name-only)" greps file CONTENT — '(test|spec)'
+                                      # matches the identifier `speciesId`.
 timeout 900 pnpm test:e2e && fail "product mutation did not turn the harness red"
 cp /tmp/scoring.bak packages/scoring/src/index.ts
 ```
@@ -417,6 +488,16 @@ _(move tasks here with the reason they stopped and what would unblock them)_
 
 ## Done
 
+- **R6 — Tenant routing never worked.** `bd71194`. `resolveTenant()` read
+  `req.nextUrl.hostname`, which is the server's *bind address*, not the request host.
+  The dev script runs `next dev --hostname 0.0.0.0`, so a probe showed
+  `hostname:"0.0.0.0"` against `host:"midwest-bass.localhost"` — every `.localhost` and
+  `.{rootDomain}` comparison fell through, the rewrite never fired, and every tenant page
+  404'd. The Redis custom-domain lookup was dead for the same reason. Now reads
+  `x-forwarded-host` then `Host`. Verified live against the seeded stack: subdomain root
+  renders "Midwest Bass Trail", `/tournaments` lists both public tournaments, a second
+  tenant is isolated, and plain `localhost` still serves marketing. Found while closing
+  R2's self-reported hollow spot.
 - **N0 — Restore green.** `751192b`. Toolchain pinned; typecheck 9/9, lint 5/5, tests
   38/38. Root cause of 20 failing API tests: fixtures that are not valid UUIDs, against
   Zod 4's RFC 9562 enforcement. Detail in `docs/ideas/proving-harness.md`.
@@ -433,6 +514,13 @@ _(move tasks here with the reason they stopped and what would unblock them)_
   actually resolve, and that advancing the clock a year moves every date a year.
   `packages/db/src/simulate-leaderboard.ts` now reads the tournament name from the seed
   instead of duplicating the literal.
+- **R2 — Seed data must not expire.** `1bd9069`. Dates now derived from `Date.now()`;
+  every tournament gets a real `scoringFormatId`; `scripts/check-seed.ts` asserts values
+  (not spelling) and was proven non-hollow against five mutations. Seed verified against
+  live Postgres afterwards: 3 tournaments, 0 FK violations, and the registration page
+  returns HTTP 200 with a real form where it previously 404'd. **Correction:** an earlier
+  note in tonight's log called the register page "STILL BROKEN" — that was a stale
+  `next-server` squatting on :3000 while the app had moved to :3002. R2's fix was correct.
 - **R1 — Make the documentation true.** `090a856`, completed `a86d24b`. Expo SDK 52→55
   (6 places incl. `apps/mobile/README.md`, which the original check did not look at),
   Next.js 15→16, RN 0.83.0→0.83.2, a gotcha citing a `packages/api/Dockerfile` that does
