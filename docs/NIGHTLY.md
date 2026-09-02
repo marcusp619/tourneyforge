@@ -422,7 +422,7 @@ _(move tasks here with the reason they stopped and what would unblock them)_
   Zod 4's RFC 9562 enforcement. Detail in `docs/ideas/proving-harness.md`.
   **Correction:** left `bun = "latest"` in `mise.toml` while CI pinned `1.4.0`; the
   commit message and `proving-harness.md` both overstated that pin. Fixed in `32ce1ea`.
-- **R2 — Seed data must not expire.** `%%SHA%%`. `packages/db/src/seed.ts` hard-coded
+- **R2 — Seed data must not expire.** `1bd9069`. `packages/db/src/seed.ts` hard-coded
   ISO date literals, so every seeded tournament's `registrationDeadline` was in the past
   and the public registration page called `notFound()` on all of them. Dates are now
   offsets from `Date.now()` via `buildSeedTournaments(now)`; three tournaments seeded
