@@ -120,10 +120,28 @@ bun test --watch                # watch mode
 ## Architecture Notes
 
 ### Multi-Tenancy
-- Single PostgreSQL database with `tenant_id` on every tenant-scoped table
-- Row-Level Security (RLS) enforced at DB level via Drizzle `pgPolicy()`
-- Per-request: `SET LOCAL app.current_tenant_id = '<uuid>'` in Hono middleware
-- Use `current_setting('app.current_tenant_id', true)` in RLS policies — the `true` arg is `missing_ok` and prevents crashes outside tenant context
+
+> ⚠️ **Tenant isolation is application-level only. Do not rely on the database to
+> enforce it.** The three bullets below describe the *intended* design. Two of the three
+> are not true today — measured against the running stack on 2026-09-02. Until tasks 11
+> and 12 in `docs/NIGHTLY.md` land, **every query you write must scope by `tenantId`
+> yourself**; nothing underneath will catch you.
+
+- Single PostgreSQL database with `tenant_id` on every tenant-scoped table. ✅ True.
+- Row-Level Security via Drizzle `pgPolicy()`. **Defined, but never enforced.** The
+  policies exist and `relrowsecurity` is on, but the app connects as `tf`, `tf` owns every
+  table, and `relforcerowsecurity` is off — *a table owner bypasses RLS*. Setting a
+  nonexistent tenant id and selecting from `tournaments` still returns every row.
+- Per-request `SET LOCAL app.current_tenant_id`. **Does not exist.** That string appears in
+  this file and nowhere else in the repo; `packages/api/src` has zero occurrences of
+  `current_tenant_id`, `SET LOCAL` or `set_config`. There is no such middleware.
+- Note for whoever implements it: `packages/db/src/index.ts` exports one module-level
+  `drizzle()` over a postgres.js pool and this repo calls `db.transaction` nowhere, so
+  `SET LOCAL` would be a no-op — and a plain `SET` would persist on the pooled connection
+  and leak the tenant into the next request. See task 12 for the required shape.
+- `x-tenant-id` is a **client-supplied header that nothing authenticates.** The API has no
+  Clerk import, no `getAuth`, no token verification, and never checks the header against
+  `tenant_members`. See task 11.
 
 ### Tenant Resolution (apps/web/middleware.ts)
 Order of resolution:
@@ -202,11 +220,19 @@ NEXT_PUBLIC_API_URL                   # e.g., https://api.tourneyforge.com
 
 ## Database Schema Overview
 
-Tenant-scoped tables (have `tenant_id` + RLS):
-- `tenants`, `tenant_members`, `scoring_formats`, `tournaments`, `tournament_divisions`, `tournament_species`, `teams`, `registrations`, `catches`, `leaderboard_cache`, `seasons`, `season_standings`
+Tenant-scoped tables — the nine that actually carry a `tenant_id` column, verified against
+the database 2026-09-02 (RLS defined but **not enforced** — see Multi-Tenancy):
+- `tenant_members`, `scoring_formats`, `tournaments`, `tournament_divisions`,
+  `tournament_species`, `teams`, `registrations`, `catches`, `sponsors`
 
-System tables (no RLS, readable by all authenticated users):
-- `users`, `species`, `themes`
+`tenants` is the root of the tree, not a tenant-scoped table — it is keyed by `id` and has
+no `tenant_id`. It was previously listed among the scoped tables.
+
+`leaderboard_cache`, `seasons` and `season_standings` were listed here but **have never
+existed** — not in `packages/db/src/schema/` and not in the database.
+
+System tables (no `tenant_id`):
+- `users`, `species`, `themes`, `marketplace_sponsors` (the last is deleted by task 9)
 
 ## Subscription Tiers
 `free` | `starter` ($19/mo) | `pro` ($49/mo) | `enterprise` ($149/mo)
@@ -239,11 +265,12 @@ Fixed routes:
 - `GET|GET /count|PATCH /api/registrations` — `packages/api/src/routes/registrations.ts`
 
 ### API Test Suite
-Added Bun test suite covering catches and registrations routes (28 tests).
+Added Bun test suite covering catches, registrations and public routes (39 tests).
 No Docker or local Postgres needed — `@tourneyforge/db` is mocked via `mock.module`.
 
 - `packages/api/test/catches.test.ts` — 16 tests
 - `packages/api/test/registrations.test.ts` — 12 tests
+- `packages/api/test/public.test.ts` — 11 tests
 - `packages/api/test/setup.ts` — preload sets dummy DATABASE_URL for Bun validation
 - `packages/api/bunfig.toml` — wires preload into `bun test`
 - `packages/api/package.json` — added `"test"` script
@@ -273,7 +300,7 @@ Public routes filter `isNull(tournaments.deletedAt)`. Note the asymmetry: `teams
 - ~~CI only runs 4 scoring tests — no API/web/mobile coverage~~ — split into `test-scoring` + `test-api` jobs
 
 **Low**:
-- Scoring engine edge cases not tested (ties, dead fish penalties, zero catches)
+- ~~Scoring engine edge cases not tested (ties, dead fish penalties, zero catches)~~ — done in `fdf2136`; `packages/scoring/test/index.test.ts` covers all three (10 tests)
 - ~~Marketplace sponsor inquiry is `mailto:` only — no in-app form~~ — done: dialog form + Resend email delivery in `SponsorContactButton.tsx`
 - ~~Public tenant site missing results archive, about/rules pages~~ — done: `/results`, `/about`, `/rules` pages added; `aboutText`/`rulesText` columns on `tenants`; dashboard settings editor
 - ~~No soft deletes / audit trail anywhere~~ — done: `deletedAt` added to catches, tournaments, scoringFormats, sponsors, tournamentDivisions; all hard deletes converted to soft deletes; all SELECT queries updated with `isNull(deletedAt)` filter
