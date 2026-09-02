@@ -24,5 +24,5 @@ export default function RootLayout({
     return content;
   }
 
-  return <ClerkProvider>{content}</ClerkProvider>;
+  return <ClerkProvider afterSignOutUrl="/">{content}</ClerkProvider>;
 }

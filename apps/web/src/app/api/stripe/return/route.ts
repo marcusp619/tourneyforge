@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const stripe = new Stripe(stripeKey, { apiVersion: Stripe.latestApiVersion });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2026-02-25.clover" });
     const account = await stripe.accounts.retrieve(accountId);
 
     // Check if onboarding is complete

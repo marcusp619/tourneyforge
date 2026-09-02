@@ -65,7 +65,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               </span>
             ) : (
               <>
-                <UserButton afterSignOutUrl="/" />
+                <UserButton />
                 <span className="text-sm text-muted-foreground">Account</span>
               </>
             )}

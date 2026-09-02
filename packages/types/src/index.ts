@@ -12,6 +12,8 @@ export interface Tenant {
   fontFamily: string | null;
   heroImageUrl: string | null;
   tagline: string | null;
+  aboutText: string | null;
+  rulesText: string | null;
   // Stripe Connect
   stripeConnectedAccountId: string | null;
   stripeAccountStatus: string;

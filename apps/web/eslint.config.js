@@ -1,11 +1,10 @@
-const { FlatCompat } = require("@eslint/eslintrc");
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-  resolvePluginsRelativeTo: __dirname,
-});
+// eslint-config-next 16 ships a native flat config (a Linter.Config[]), so it is
+// spread directly. The previous @eslint/eslintrc FlatCompat shim is for legacy
+// eslintrc-style configs and throws "Converting circular structure to JSON" here.
+const nextCoreWebVitals = require("eslint-config-next/core-web-vitals");
 
 /** @type {import("eslint").Linter.Config[]} */
 module.exports = [
-  ...compat.extends("next/core-web-vitals"),
+  { ignores: [".next/**", "node_modules/**", "next-env.d.ts"] },
+  ...nextCoreWebVitals,
 ];

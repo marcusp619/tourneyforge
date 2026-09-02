@@ -1,0 +1,16 @@
+# TourneyForge — pinned toolchain.
+#
+# Every command in package.json assumes these exist. CI installs the same
+# versions, so "works on my machine" and "works in CI" mean the same thing.
+#
+#   mise install     # provision everything below
+#
+# Node is 22 (active LTS) rather than the 20 CI used to pin — Node 20 reached
+# end-of-life in April 2026. pnpm matches the "packageManager" field in
+# package.json; bun runs the API server and every test in packages/api and
+# packages/scoring.
+
+[tools]
+node = "22"
+pnpm = "10.30.1"
+bun = "latest"

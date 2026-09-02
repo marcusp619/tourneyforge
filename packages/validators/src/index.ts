@@ -57,7 +57,7 @@ export const scoringFormatTypeSchema = z.enum(["weight", "length", "count", "cus
 export const createScoringFormatSchema = z.object({
   name: z.string().min(1).max(100),
   type: scoringFormatTypeSchema,
-  rules: z.record(z.unknown()).default({}),
+  rules: z.record(z.string(), z.unknown()).default({}),
 });
 
 // Team schemas

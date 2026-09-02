@@ -13,7 +13,7 @@ async function getStripeSession(sessionId: string) {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) return null;
   try {
-    const stripe = new Stripe(key, { apiVersion: Stripe.latestApiVersion });
+    const stripe = new Stripe(key, { apiVersion: "2026-02-25.clover" });
     return await stripe.checkout.sessions.retrieve(sessionId);
   } catch {
     return null;

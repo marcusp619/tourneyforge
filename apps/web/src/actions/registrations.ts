@@ -13,7 +13,7 @@ const LOCAL_DEV = process.env.LOCAL_DEV === "true";
 function getStripe() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY is not set");
-  return new Stripe(key, { apiVersion: Stripe.latestApiVersion });
+  return new Stripe(key, { apiVersion: "2026-02-25.clover" });
 }
 
 export async function createRegistration(

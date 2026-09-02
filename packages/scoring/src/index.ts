@@ -113,7 +113,7 @@ export function calculateStandings(input: ScoringInput): ScoringResult {
 
   // Build leaderboard (sorted by score descending, ties share rank)
   const sorted = Array.from(teamScores.entries()).sort(([, a], [, b]) => b - a);
-  const leaderboard: LeaderboardEntry[] = sorted.map(([teamId, score], index) => {
+  const leaderboard: LeaderboardEntry[] = sorted.map(([teamId, score]) => {
     // Rank = position of first entry with this score (1-based)
     const rank = sorted.findIndex(([, s]) => s === score) + 1;
     return {
