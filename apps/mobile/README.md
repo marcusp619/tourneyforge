@@ -1,6 +1,6 @@
 # TourneyForge Mobile
 
-Expo SDK 52 mobile app for anglers.
+Expo SDK 55 mobile app for anglers.
 
 ## Setup
 
