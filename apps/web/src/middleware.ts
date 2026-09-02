@@ -34,7 +34,13 @@ function getRedis(): Redis | null {
  */
 async function resolveTenant(req: NextRequest): Promise<NextResponse | null> {
   const url = req.nextUrl;
-  const hostname = url.hostname;
+  // Read the host from the request headers, NOT req.nextUrl.hostname.
+  // nextUrl.hostname reflects the server's bind address — with
+  // `next dev --hostname 0.0.0.0` it is literally "0.0.0.0", so every
+  // subdomain and custom-domain lookup silently failed to match.
+  // x-forwarded-host wins when set (proxied deploys), then Host.
+  const rawHost = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "";
+  const hostname = rawHost.split(":")[0]?.toLowerCase() ?? "";
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "tourneyforge.com";
 
   // *.localhost — local dev subdomain routing (e.g. demo.localhost)
