@@ -356,7 +356,10 @@ from `sleep`. Grepping the script for `sleep` does not: `command sleep 30` and
 ---
 
 ### Task 3 — Point the docs at the offline stack  `[G3]`
-**Blocked by:** task 2
+**Status: DONE 2026-09-02.** README leads with an offline quick-start (no cloud accounts,
+service-substitute table, subdomain URLs); `.env.example` redirects to the docker
+templates. Verified live: a tenant page rendered the seeded tournament, and the
+committed-secret scan is clean.
 
 Goal: `apps/web/.env.local.docker`, `packages/api/.env.docker` and
 `packages/db/.env.docker` already exist, are tracked, and are good. Nothing points at
