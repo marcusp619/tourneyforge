@@ -287,7 +287,7 @@ capture_into ROWS "tournament count" "timeout 30 docker compose exec -T postgres
 # tournaments, or a `draft` one the public endpoint filters out — the assertion then fails
 # on a working product and the agent's fix is to weaken it.
 capture_into NAME "publicly visible seeded tournament" "timeout 30 docker compose exec -T postgres \
-  psql -U tf -d tourneyforge -tAc \"select name from tournaments where status in ('open','active') order by name limit 1\
+  psql -U tf -d tourneyforge -tAc \"select name from tournaments where status in ('open','active') order by name limit 1\""
 must_contain_literal "public list" "timeout 30 curl -fsS localhost:3001/api/public/tournaments" "$NAME"
 ```
 `capture` fails on empty output, so the name assertion can never degrade into
@@ -344,7 +344,7 @@ timeout 300 pnpm dev:up
 capture_into SLUG "tenant owning a public tournament" "timeout 30 docker compose exec -T postgres \
   psql -U tf -d tourneyforge -tAc \"select n.slug from tenants n join tournaments t on t.tenant_id=n.id where t.status in ('open','active') order by n.slug limit 1\""
 capture_into NAME "its tournament" "timeout 30 docker compose exec -T postgres \
-  psql -U tf -d tourneyforge -tAc \"select t.name from tournaments t join tenants n on n.id=t.tenant_id where n.slug='\$SLUG' and t.status in ('open','active') order by t.name limit 1\
+  psql -U tf -d tourneyforge -tAc \"select t.name from tournaments t join tenants n on n.id=t.tenant_id where n.slug='\$SLUG' and t.status in ('open','active') order by t.name limit 1\""
 must_contain_literal "tenant page renders seeded data" \
   "timeout 60 curl -fsS -H 'Host: ${SLUG}.localhost' localhost:3000/tournaments" "$NAME"
 # Value-shaped, not bare prefixes, and excluding this file (which quotes the pattern)
