@@ -77,6 +77,28 @@ const seedUsers = [
 const WEIGHT_FORMAT_ID = "2fa76f7e-c016-47c1-9674-da5c554f742e";
 const LENGTH_FORMAT_ID = "76ffce93-8673-49a4-9d33-455243e74914";
 
+/**
+ * Scoring-format ids pinned PER TENANT.
+ *
+ * Every tenant gets its own copy of every format, and a tournament must reference a
+ * format belonging to *its own* tenant. Pointing carolina-kayak's tournament at
+ * midwest-bass's format id would still satisfy a foreign key — the tables are related by
+ * id, not by tenant — but it is a tenant-scope bug, and nothing in the database will stop
+ * you (RLS is defined and not enforced; see tasks 11 and 12). `scripts/check-seed.ts`
+ * asserts the ownership, which is the only thing that does.
+ */
+export const seedFormatIds: Record<string, { weight: string; length: string }> = {
+  "midwest-bass": { weight: WEIGHT_FORMAT_ID, length: LENGTH_FORMAT_ID },
+  "carolina-kayak": {
+    weight: "3b7c1d2e-4f5a-4b6c-8d9e-0a1b2c3d4e5f",
+    length: "4c8d2e3f-5a6b-4c7d-9e0f-1a2b3c4d5e6f",
+  },
+  "lake-norman-bass": {
+    weight: "5d9e3f4a-6b7c-4d8e-a1f2-2b3c4d5e6f70",
+    length: "6ea04f5b-7c8d-4e9f-b2a3-3c4d5e6f7081",
+  },
+};
+
 export type SeedScoringFormat = {
   id: string;
   name: string;
@@ -122,6 +144,8 @@ export type SeedTournament = {
   registrationDeadline: Date;
   status: "draft" | "open" | "active" | "completed";
   scoringFormatId: string;
+  /** Slug of the tenant that owns this tournament. */
+  tenantSlug: string;
 };
 
 /**
@@ -146,6 +170,7 @@ export function buildSeedTournaments(now: number = Date.now()): SeedTournament[]
       registrationDeadline: new Date(now + 14 * DAY_MS),
       status: "open",
       scoringFormatId: WEIGHT_FORMAT_ID,
+      tenantSlug: "midwest-bass",
     },
     {
       name: "Lake Oahe Shootout",
@@ -156,6 +181,7 @@ export function buildSeedTournaments(now: number = Date.now()): SeedTournament[]
       registrationDeadline: new Date(now + 6 * HOUR_MS),
       status: "active",
       scoringFormatId: WEIGHT_FORMAT_ID,
+      tenantSlug: "midwest-bass",
     },
     {
       name: "Summer Showdown",
@@ -165,6 +191,30 @@ export function buildSeedTournaments(now: number = Date.now()): SeedTournament[]
       registrationDeadline: new Date(now + 83 * DAY_MS),
       status: "draft",
       scoringFormatId: LENGTH_FORMAT_ID,
+      tenantSlug: "midwest-bass",
+    },
+    // Discovery in the mobile app is cross-club (see Decisions, 2026-09-02), so a seed
+    // where one club owns every tournament makes the club attribution invisible and
+    // leaves task 17's group-by-club picker with nothing to group.
+    {
+      name: "Outer Banks Kayak Open",
+      description: "Catch, photo, release from a kayak. Longest three redfish take it.",
+      startDate: new Date(now + 30 * DAY_MS),
+      endDate: new Date(now + 30 * DAY_MS + 8 * HOUR_MS),
+      registrationDeadline: new Date(now + 23 * DAY_MS),
+      status: "open",
+      scoringFormatId: seedFormatIds["carolina-kayak"]!.length,
+      tenantSlug: "carolina-kayak",
+    },
+    {
+      name: "Norman Night Bite",
+      description: "After-dark summer series. Lines in at sunset, weigh-in at midnight.",
+      startDate: new Date(now - 1 * HOUR_MS),
+      endDate: new Date(now + 5 * HOUR_MS),
+      registrationDeadline: new Date(now + 5 * HOUR_MS),
+      status: "active",
+      scoringFormatId: seedFormatIds["lake-norman-bass"]!.weight,
+      tenantSlug: "lake-norman-bass",
     },
   ];
 }
@@ -354,8 +404,8 @@ async function seed() {
   // Only the primary tenant's rows carry pinned ids — those are the ones
   // seedTournaments references. Every other tenant gets database-generated ids.
   console.log("📊 Seeding scoring formats...");
-  const primaryTenant = insertedTenants[0]!;
   for (const tenant of insertedTenants) {
+    const pinned = seedFormatIds[tenant.slug];
     const rows: NewScoringFormat[] = seedScoringFormats.map((format) => {
       const row: NewScoringFormat = {
         tenantId: tenant.id,
@@ -363,7 +413,8 @@ async function seed() {
         type: format.type,
         rules: format.rules,
       };
-      if (tenant.id === primaryTenant.id) row.id = format.id;
+      // Pin per tenant, so a tournament in any club can reference its OWN club's format.
+      if (pinned) row.id = format.type === "weight" ? pinned.weight : pinned.length;
       return row;
     });
     await db.insert(scoringFormats).values(rows);
@@ -372,11 +423,13 @@ async function seed() {
 
   // Insert sample tournaments (rebuilt off the clock at insert time)
   console.log("🏆 Seeding tournaments...");
+  const tenantIdBySlug = new Map(insertedTenants.map((t) => [t.slug, t.id]));
   await db.insert(tournaments).values(
-    buildSeedTournaments().map((tournament) => ({
-      tenantId: primaryTenant.id,
-      ...tournament,
-    }))
+    buildSeedTournaments().map(({ tenantSlug, ...tournament }) => {
+      const tenantId = tenantIdBySlug.get(tenantSlug);
+      if (!tenantId) throw new Error(`seed: no tenant with slug "${tenantSlug}"`);
+      return { tenantId, ...tournament };
+    })
   );
   console.log(`   ✅ Created ${seedTournaments.length} tournaments`);
 

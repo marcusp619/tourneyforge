@@ -14,6 +14,11 @@
  *      actually creates (a dangling uuid is as useless as a null one)
  *   4. the dates really are derived from the clock — advancing `now` by a year
  *      must move every date by a year
+ *   5. every tournament's scoringFormatId belongs to its OWN tenant. A cross-tenant
+ *      reference still satisfies the foreign key, so nothing in the database catches
+ *      it — and RLS is defined but not enforced, so nothing at runtime does either.
+ *   6. at least two distinct tenants own an open-or-active tournament, because
+ *      discovery is cross-club and one club makes the attribution untestable.
  *
  * Run from the repo root:  bun run scripts/check-seed.ts
  *
@@ -26,9 +31,8 @@
 
 process.env["DATABASE_URL"] ??= "postgresql://check:check@check.invalid/check";
 
-const { seedTournaments, seedScoringFormats, buildSeedTournaments } = await import(
-  "../packages/db/src/seed"
-);
+const { seedTournaments, seedScoringFormats, buildSeedTournaments, seedFormatIds } =
+  await import("../packages/db/src/seed");
 
 const failures: string[] = [];
 const fail = (message: string): void => {
@@ -46,7 +50,16 @@ if (seedScoringFormats.length === 0) {
   fail("the seed defines no scoring formats at all");
 }
 
-const knownFormatIds = new Set(seedScoringFormats.map((format) => format.id));
+// Every pinned format id, and the tenant that owns it.
+const formatOwner = new Map<string, string>();
+for (const [slug, ids] of Object.entries(seedFormatIds)) {
+  formatOwner.set(ids.weight, slug);
+  formatOwner.set(ids.length, slug);
+}
+const knownFormatIds = new Set([
+  ...seedScoringFormats.map((format) => format.id),
+  ...formatOwner.keys(),
+]);
 
 // ------------------------------------------------- 1 & 3: per-tournament
 for (const tournament of seedTournaments) {
@@ -70,7 +83,31 @@ for (const tournament of seedTournaments) {
       `${label}: scoringFormatId ${formatId} does not match any scoring format the ` +
         `seed creates (known: ${[...knownFormatIds].join(", ")})`
     );
+  } else {
+    // 5. tenant scope: the format must belong to the tournament's own tenant.
+    const owner = formatOwner.get(formatId);
+    if (owner && owner !== tournament.tenantSlug) {
+      fail(
+        `${label}: belongs to tenant "${tournament.tenantSlug}" but its scoringFormatId ` +
+          `${formatId} belongs to "${owner}" — a cross-tenant reference. The foreign key ` +
+          `accepts this and RLS is not enforced, so nothing but this check will catch it.`
+      );
+    }
   }
+}
+
+// -------------------------------------- 6: more than one club is publicly visible
+const publicClubs = new Set(
+  seedTournaments
+    .filter((t) => t.status === "open" || t.status === "active")
+    .map((t) => t.tenantSlug)
+);
+if (publicClubs.size < 2) {
+  fail(
+    `only ${publicClubs.size} club(s) own an open-or-active tournament ` +
+      `(${[...publicClubs].join(", ") || "none"}) — discovery is cross-club, so the club ` +
+      `attribution is invisible and task 17's group-by-club picker has nothing to group`
+  );
 }
 
 // -------------------------------------------------------- 2: statuses present
@@ -109,5 +146,6 @@ if (failures.length > 0) {
 console.log(
   `check-seed: ok — ${seedTournaments.length} tournaments, ` +
     `${seedScoringFormats.length} scoring formats; ` +
-    `statuses [${statuses.join(", ")}]; all deadlines in the future`
+    `statuses [${statuses.join(", ")}]; all deadlines in the future; ` +
+    `${publicClubs.size} clubs publicly visible [${[...publicClubs].join(", ")}]`
 );

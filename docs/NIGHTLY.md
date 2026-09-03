@@ -393,6 +393,9 @@ Guardrail: the marketing page at `/` renders with no database and contains the w
 ---
 
 ### Task 4 — Seed tournaments for more than one club  `[R8]`
+**Status: DONE 2026-09-02.** 3 clubs now own an open-or-active tournament. Per-tenant
+pinned scoring-format ids; `check-seed.ts` extended with a cross-tenant reference check
+and a two-club minimum, both mutation-tested.
 
 Goal: `midwest-bass` owns all three seeded tournaments; `carolina-kayak` and
 `lake-norman-bass` own none (verified 2026-09-02 against the docker stack). The mobile
@@ -411,10 +414,16 @@ Verify:
 source scripts/verify-lib.sh
 timeout 300 bun run scripts/check-seed.ts
 # the real assertion — against the running stack, not the source:
-docker exec -i tourneyforge-postgres-1 psql -U tf -d tourneyforge -tAc \
-  "SELECT count(DISTINCT tr.tenant_id) FROM tournaments tr
-    WHERE tr.status IN ('open','active') AND tr.deleted_at IS NULL;"
-#   MUST be >= 2. Assert on the number; do not eyeball it.
+# STRENGTHENED 2026-09-02. The line below used to run the query bare and carry the
+# comment "MUST be >= 2. Assert on the number; do not eyeball it." — while asserting
+# nothing: `psql -tAc "SELECT count(...)"` exits 0 whether the answer is 1 or 2, so the
+# block's own instruction was the one thing it did not do. Now captured and tested.
+capture_into CLUBS "distinct clubs with a public tournament" \
+  "timeout 30 docker compose exec -T postgres psql -U tf -d tourneyforge -tAc \
+   \"SELECT count(DISTINCT tr.tenant_id) FROM tournaments tr \
+     WHERE tr.status IN ('open','active') AND tr.deleted_at IS NULL\""
+[ "$CLUBS" -ge 2 ] || die "only $CLUBS club(s) own a publicly visible tournament"
+pass "$CLUBS clubs own a publicly visible tournament"
 curl -s localhost:3001/api/public/tournaments \
   | jq -e '[.data[].tenantSlug] | unique | length >= 2'
 ```
