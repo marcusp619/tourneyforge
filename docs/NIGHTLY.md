@@ -77,6 +77,14 @@ This rule exists because it already happened: R1 was completed and committed, it
 checks passed, and it sat in Ready — a subsequent agent would have "completed" it a
 second time having changed nothing.
 
+**Carve-out: a task whose deliverable is evidence, not a diff.** Some tasks exist to
+establish a fact rather than to change the product — their Verify block *is* the
+deliverable, so green-on-arrival is success, not mis-specification. Such a task must say
+so in its Goal. Task 1 is the worked example: it proves the docker stack serves the
+application and changes nothing, so "already green" means the fact holds. Do not use this
+carve-out on a task that ships a file or a behaviour change; for those, the rule above
+stands unamended. (Added 2026-09-02 after task 1 hit it.)
+
 ### Assert truth, not consistency
 
 A check that compares two documents to each other passes when both are wrong in the same
@@ -257,6 +265,9 @@ should have a URL.
 ## Block 1 — Harness
 
 ### Task 1 — Prove the offline stack runs the product  `[G1]`
+**Status: DONE 2026-09-02.** Green on arrival — see the measurement-task carve-out in
+the Protocol. The stack serves the product: seed produced 3 tenants / 3 tournaments,
+`GET /` returned `{"status":"ok"}`, and the public list contained `Lake Oahe Shootout`.
 
 Goal: establish the docker stack actually serves this application. Note the health
 endpoint is `GET /`, not `/api/health`, and nothing starts the API server for you.
@@ -274,9 +285,16 @@ timeout 120 pnpm db:push --force             # drizzle-kit prompts on destructiv
 timeout 120 pnpm db:seed
 W=$(workdir)                       # never hardcode /tmp paths: a crashed run leaves
                                    # stale pids and stale backups behind
-cd packages/api && bun run src/index.ts & API_PID=$!   # $! must be bun's own pid;
-cd - >/dev/null                                        # `(cd x && cmd &)` captures the
-trap 'kill "$API_PID" 2>/dev/null; rm -rf "$W"' EXIT   # SUBSHELL pid and orphans bun
+# `cd x && cmd &` backgrounds the whole AND-list, so $! is the SUBSHELL's pid and the
+# trap below would kill the subshell while bun keeps holding :3001. Reproduced twice on
+# 2026-09-02; the next run then hit EADDRINUSE and the STALE process answered, which
+# already produced one false "fixed" result earlier in that session. Ask the kernel who
+# holds the port instead of trusting $!.
+( cd packages/api && exec setsid nohup bun run src/index.ts </dev/null >"$W/api.log" 2>&1 & )
+timeout 60 bash -c 'until curl -fsS localhost:3001/ >/dev/null 2>&1; do sleep 2; done'
+API_PID=$(ss -ltnp 2>/dev/null | grep ':3001 ' | grep -oP 'pid=\K[0-9]+' | head -1)
+[ -n "$API_PID" ] || die "nothing is listening on :3001"
+trap 'kill "$API_PID" 2>/dev/null; rm -rf "$W"' EXIT
 timeout 60 bash -c 'until curl -fsS localhost:3001/ >/dev/null 2>&1; do sleep 2; done'
 must_contain_literal "health" "timeout 30 curl -fsS localhost:3001/" '"status":"ok"'
 # the seed actually landed:
@@ -296,7 +314,9 @@ must_contain_literal "public list" "timeout 30 curl -fsS localhost:3001/api/publ
 ---
 
 ### Task 2 — One command from clean checkout to running app  `[G2]`
-**Blocked by:** task 1
+**Status: DONE 2026-09-02.** `scripts/dev-up.sh`; cold start from a wiped volume, warm
+start measured at 2s against the 20s budget, and it fails in 20s on an unreachable
+`DATABASE_URL`. Its dead-dependency assertion was replaced (see the block).
 
 **Runs before G3, which depends on it.** Goal: collapse G1 into `pnpm dev:up`.
 
@@ -313,10 +333,21 @@ timeout 300 pnpm dev:up                      # cold
 START=$(date +%s); timeout 120 pnpm dev:up; ELAPSED=$(( $(date +%s) - START ))
 [ "$ELAPSED" -lt 20 ] || fail "warm start took ${ELAPSED}s — script is sleeping, not polling health"
 must_contain_literal "prints URLs" "timeout 120 pnpm dev:up" "localhost:3000"
-# a sleeping script cannot notice a dead dependency:
-timeout 60 docker compose stop postgres
-timeout 180 pnpm dev:up && fail "dev:up succeeded with postgres down — it is not checking health"
-timeout 60 docker compose start postgres
+# A sleeping script cannot notice a dead dependency.
+# REPLACED 2026-09-02, approved by the human. The original stopped postgres and required
+# dev:up to fail — impossible, because dev:up starts docker services and therefore just
+# restarts it (measured: `docker compose up -d --wait postgres` returns 0 and the
+# container goes Starting -> Started -> Healthy). Point the app's own connection string
+# at a closed port instead: that is a dependency the script cannot auto-heal, and it
+# checks the fact that actually predicts whether the API works. A healthy container
+# behind an unreachable DATABASE_URL is precisely the state a container-only check
+# passes and the product fails on.
+# `cmd && fail ...` is wrong here: when cmd correctly FAILS, && short-circuits and the
+# block still exits with cmd's non-zero status, reporting a pass as a failure.
+if DATABASE_URL='postgres://tf:tf@127.0.0.1:1/tourneyforge' timeout 180 pnpm dev:up >/dev/null 2>&1
+then die "dev:up succeeded with no reachable database — it is not checking health"
+else pass "dev:up fails when DATABASE_URL is unreachable"
+fi
 ```
 The warm-start timing plus the dead-postgres case are what actually distinguish polling
 from `sleep`. Grepping the script for `sleep` does not: `command sleep 30` and

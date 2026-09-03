@@ -41,6 +41,18 @@ timeout 300 docker compose up -d --wait postgres redis minio mailpit \
 wait_for "postgres to accept queries" 60 \
   "docker compose exec -T postgres pg_isready -U tf -d tourneyforge"
 wait_for "redis" 30 "docker compose exec -T redis redis-cli ping"
+
+# ...and reachable AT DATABASE_URL, which is a different fact. The two checks above ask
+# Docker whether the container is well; this asks whether the string the app actually
+# connects with resolves to a database that answers. A healthy container behind a wrong
+# or unreachable DATABASE_URL is exactly the state that looks fine here and fails at the
+# first request.
+if [ -z "${DATABASE_URL:-}" ] && [ -f packages/api/.env ]; then
+  DATABASE_URL=$(grep -h "^DATABASE_URL=" packages/api/.env | head -1 | cut -d= -f2- | tr -d "\"'")
+  export DATABASE_URL
+fi
+[ -n "${DATABASE_URL:-}" ] || die "DATABASE_URL is unset and packages/api/.env does not define it"
+wait_for "database reachable at DATABASE_URL" 20 "bun run \"$ROOT/scripts/db-ping.ts\""
 log "services healthy"
 
 # ---------------------------------------------------------------- schema + seed
