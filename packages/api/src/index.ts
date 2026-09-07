@@ -17,8 +17,6 @@ import { stripeRouter } from "./routes/stripe";
 import { catchRouter } from "./routes/catches";
 import { sponsorRouter } from "./routes/sponsors";
 import { aiRouter } from "./routes/ai";
-import { v1Router } from "./routes/v1";
-import { notificationRouter } from "./routes/notifications";
 import { marketplaceRouter } from "./routes/marketplace";
 
 // Create main app
@@ -43,8 +41,6 @@ app.route("/api/catches", catchRouter);
 app.route("/api/stripe", stripeRouter);
 app.route("/api/sponsors", sponsorRouter);
 app.route("/api/ai", aiRouter);
-app.route("/api/v1", v1Router);
-app.route("/api/notifications", notificationRouter);
 app.route("/api/marketplace", marketplaceRouter);
 
 // Start server

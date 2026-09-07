@@ -126,9 +126,6 @@ Fill in all values. Required variables:
 | `R2_BUCKET_NAME` | api | R2 bucket name |
 | `RESEND_API_KEY` | api | Resend email API key |
 | `ANTHROPIC_API_KEY` | api | Claude AI for catch verification |
-| `TWILIO_ACCOUNT_SID` | api | Twilio account SID (SMS) |
-| `TWILIO_AUTH_TOKEN` | api | Twilio auth token (SMS) |
-| `TWILIO_FROM_NUMBER` | api | Twilio sender number, e.g. `+15551234567` |
 | `NEXT_PUBLIC_ROOT_DOMAIN` | web | e.g. `tourneyforge.com` |
 | `NEXT_PUBLIC_API_URL` | web | e.g. `https://api.tourneyforge.com` |
 
@@ -215,17 +212,12 @@ pnpm turbo run dev --filter=@tourneyforge/mobile   # Expo dev server
 | `PATCH /api/catches/:id/verify` | Manually verify a catch (director) |
 | `POST /api/ai/verify-catch` | AI verify a catch photo |
 | `POST /api/stripe/connect` | Stripe Connect onboarding |
-| `POST /api/notifications/tournament-status` | Send SMS/email on status change |
 | `GET /api/marketplace/tournaments` | Browse all public tournaments |
 | `GET /api/marketplace/sponsors` | Browse sponsor marketplace |
 
 ### Public API v1 (Enterprise, `x-api-key` auth)
 | Route | Description |
 |-------|-------------|
-| `GET /api/v1/tournaments` | List your tournaments |
-| `GET /api/v1/tournaments/:id` | Tournament details + registration count |
-| `GET /api/v1/tournaments/:id/leaderboard` | Live leaderboard |
-| `GET /api/v1/tournaments/:id/registrations` | Registered teams |
 
 ---
 

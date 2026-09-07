@@ -575,7 +575,9 @@ Guardrail: a job that cannot fail is worthless. Prove red; never assume it.
 ## Block 2 — Subtract
 
 ### Task 8 — Delete the public API v1 and the SMS path  **(large)**
-**Blocked by:** task 7
+**Status: DONE 2026-09-06.** `routes/v1.ts`, `lib/sms.ts`, `routes/notifications.ts`
+deleted; mounts, the web action's fire-and-forget call, the `twilio` dependency and
+every `TWILIO_*` var removed. Both routes 404 against a restarted server; E2E green.
 
 Goal: `packages/api/src/routes/v1.ts` (211 lines) is an Enterprise-plan API authenticated
 by `x-api-key`, with Upstash rate limiting. `packages/api/src/lib/sms.ts` (55) and
@@ -601,7 +603,13 @@ must_not_match 'sendSms|twilio|TWILIO' packages/api/src apps/web/src
 timeout 600 pnpm run check                        # all 9 packages
 timeout 600 pnpm run lint
 (cd packages/api && timeout 300 bun test)
-# Gone from the RUNNING server, not merely from the source tree:
+# Gone from the RUNNING server, not merely from the source tree.
+# The API MUST be restarted first: `bun run` has no --watch, so a server started before
+# the deletion keeps serving the deleted routes and this check reports 401 instead of
+# 404 — a false FAILURE on a correct deletion. Measured 2026-09-06. dev:up cannot tell a
+# stale server from a current one; it only knows the port is ours.
+PID=$(ss -ltnp 2>/dev/null | grep ':3001 ' | grep -oP 'pid=\K[0-9]+' | head -1)
+if [ -n "$PID" ] && readlink "/proc/$PID/cwd" 2>/dev/null | grep -q "^$PWD"; then kill "$PID"; fi
 timeout 300 pnpm dev:up
 capture_into CODE "GET /api/v1/tournaments" \
   "timeout 30 curl -s -o /dev/null -w '%{http_code}' localhost:3001/api/v1/tournaments"
