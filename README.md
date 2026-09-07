@@ -45,11 +45,52 @@ tourneyforge/
 
 ## Quick Start
 
+### Run it offline — no cloud accounts, no keys, no bill
+
+**This is the recommended way to run TourneyForge locally.** The whole product runs on
+your machine against a docker stack, with **no cloud accounts** and nothing to pay for.
+
+(CI does *not* run this stack yet — it runs typecheck, lint and the unit tests only.
+Standing the harness up in CI is task 7 in `docs/NIGHTLY.md`.) You do not need Neon, Clerk, Stripe, Upstash, Cloudflare R2 or Resend
+to develop against it.
+
+```bash
+mise install          # pins node 22 / pnpm 10.30.1 / bun 1.4.0
+pnpm install
+cp apps/web/.env.local.docker apps/web/.env.local
+cp packages/api/.env.docker    packages/api/.env
+cp packages/db/.env.docker     packages/db/.env
+pnpm dev:up           # -> http://localhost:3000 and http://localhost:3001
+```
+
+`pnpm dev:up` starts the docker services, waits on real health, pushes the schema, seeds
+test data, starts the web and API servers, prints both URLs and returns. It is idempotent:
+a warm start takes ~2s, and it fails loudly rather than hanging if a dependency is down.
+
+`docker-compose.yml` provides the substitutes:
+
+| Cloud service | Local substitute | Where |
+|---|---|---|
+| Neon PostgreSQL | postgres | `localhost:5432` |
+| Upstash Redis | redis | `localhost:6379` |
+| Cloudflare R2 | MinIO (S3-compatible) | `localhost:9000`, console `:9001` |
+| Resend email | Mailpit | SMTP `:1025`, inbox `http://localhost:8025` |
+| Clerk auth | `LOCAL_DEV=true` bypass | see `apps/web/src/lib/` |
+
+The three tracked `.env.local.docker` / `.env.docker` templates hold working values for
+all of it — they are committed on purpose and contain no secrets.
+
+Seeded tenants are served on subdomains of `localhost`:
+`http://midwest-bass.localhost:3000`, `carolina-kayak`, `lake-norman-bass`.
+
+To stop everything: `docker compose down` (add `-v` to wipe the database too).
+
 ### Prerequisites
 - [pnpm](https://pnpm.io) (required — do NOT use npm or yarn)
 - [Bun](https://bun.sh) (for the API server)
 - [Node.js](https://nodejs.org) ≥ 20
-- PostgreSQL via [Neon](https://neon.tech) (serverless)
+- [Docker](https://docs.docker.com/engine/install/) — for the offline stack above
+- PostgreSQL via [Neon](https://neon.tech) — **only** if you are deploying; not needed locally
 
 ### Install
 

@@ -12,9 +12,11 @@
     "db:migrate": "cd packages/db && bun run migrate",
     "db:generate": "cd packages/db && bun run generate",
     "db:studio": "cd packages/db && bun run studio",
-    "db:seed": "cd packages/db && bun run seed"
+    "db:seed": "cd packages/db && bun run seed",
+    "dev:up": "bash scripts/dev-up.sh"
   },
   "devDependencies": {
+    "postgres": "^3.4.5",
     "prettier": "^3.5.2",
     "turbo": "^2.8.16",
     "typescript": "^5.9.3"

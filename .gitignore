@@ -60,3 +60,4 @@ drizzle/
 .expo
 expo-shared-assets
 *.orig.*
+.dev/
