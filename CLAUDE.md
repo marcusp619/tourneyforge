@@ -5,15 +5,17 @@ TourneyForge is a multi-tenant SaaS platform for fishing tournament management. 
 
 ## Development Status
 
-**Current Phase:** Code written through Phase 7. See the caveat below.
+**Current Phase:** Phases 0-6. Phase 7 was deleted on 2026-09-06 (tasks 8 and 9)
+after the harness could prove nothing else broke. See the caveat below.
 
 > **What "complete" means here.** Until 2026-09-01 these phases were marked complete
 > while CI had been red for eight consecutive runs (main included) and 20 of the 28 API
 > tests were failing. "Complete" in the list below means *the code was written*, not
 > that anyone has run it end to end. CI on `main` first went green on 2026-09-02
 > (run `33626804701`). Known gaps that survive: anglers must paste a raw tournament
-> UUID into the mobile app, no web UI creates a catch, only one seeded club has any
-> tournaments, and there are no database migrations. Tracked in `docs/NIGHTLY.md`.
+> UUID into the mobile app, no web UI creates a catch, and there are no database
+> migrations. (Three clubs now have seeded tournaments — fixed 2026-09-06, task 4.)
+> Tracked in `docs/NIGHTLY.md`.
 
 **Completed:**
 - ✅ Phase 0: Foundation (monorepo, database, auth, CI/CD, seed data)
@@ -23,7 +25,6 @@ TourneyForge is a multi-tenant SaaS platform for fishing tournament management. 
 - ✅ Phase 4: Live tournaments, catch submission (mobile), real-time leaderboards
 - ✅ Phase 5: Mobile app polish, Clerk auth, EAS build config
 - ✅ Phase 6: Custom domains, sponsors, analytics, email notifications
-- ✅ Phase 7: Public API v1, AI catch verification (Claude Haiku), marketplace, SMS
 
 **UI Stack:**
 - Web dashboard and marketing site use **shadcn/ui** + Tailwind CSS v4
@@ -232,7 +233,7 @@ no `tenant_id`. It was previously listed among the scoped tables.
 existed** — not in `packages/db/src/schema/` and not in the database.
 
 System tables (no `tenant_id`):
-- `users`, `species`, `themes`, `marketplace_sponsors` (the last is deleted by task 9)
+- `users`, `species`, `themes`
 
 ## Subscription Tiers
 `free` | `starter` ($19/mo) | `pro` ($49/mo) | `enterprise` ($149/mo)
@@ -246,8 +247,11 @@ Plan is stored on `tenants.plan` enum. Feature gating is enforced in the API mid
 - **Phase 3** ✅ COMPLETE: Registration + Stripe Connect payments
 - **Phase 4** ✅ COMPLETE: Live tournament, catch submission (mobile), real-time leaderboards
 - **Phase 5** ✅ COMPLETE: Mobile app polish, Clerk auth, EAS build config
-- **Phase 6** ✅ COMPLETE: Custom domains, sponsors, analytics, SMS notifications
-- **Phase 7** ✅ COMPLETE: Public API v1, marketplace, AI catch verification (Claude Haiku)
+- **Phase 6** ✅ COMPLETE: Custom domains, sponsors, analytics, email notifications
+  (SMS was part of Phase 7 and is gone)
+- **Phase 7** ❌ DELETED 2026-09-06: public API v1, marketplace, AI catch verification
+  and SMS. Four surfaces no test ever touched and no user ever called; removed so the
+  thing the harness has to hold up is smaller. Recoverable from git history.
 
 ---
 
@@ -301,7 +305,6 @@ Public routes filter `isNull(tournaments.deletedAt)`. Note the asymmetry: `teams
 
 **Low**:
 - ~~Scoring engine edge cases not tested (ties, dead fish penalties, zero catches)~~ — done in `fdf2136`; `packages/scoring/test/index.test.ts` covers all three (10 tests)
-- ~~Marketplace sponsor inquiry is `mailto:` only — no in-app form~~ — done: dialog form + Resend email delivery in `SponsorContactButton.tsx`
 - ~~Public tenant site missing results archive, about/rules pages~~ — done: `/results`, `/about`, `/rules` pages added; `aboutText`/`rulesText` columns on `tenants`; dashboard settings editor
 - ~~No soft deletes / audit trail anywhere~~ — done: `deletedAt` added to catches, tournaments, scoringFormats, sponsors, tournamentDivisions; all hard deletes converted to soft deletes; all SELECT queries updated with `isNull(deletedAt)` filter
 

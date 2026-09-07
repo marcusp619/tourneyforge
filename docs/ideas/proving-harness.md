@@ -71,7 +71,9 @@ The smallest thing that proves a machine can establish a product fact.
   logic under test is shared with web. Revisit only once the web harness is green.
 - **Deploying anywhere** — There are no users. Deploying now buys a monthly bill and an
   entirely new class of bug. The docker stack *is* the environment until someone needs a URL.
-- **Deleting Phase 7** (marketplace, public API, AI verification, SMS) — Correct to do, wrong
+- **Deleting Phase 7** — DONE 2026-09-06, tasks 8 and 9, once the harness could prove
+  nothing else broke. Original reasoning kept below.
+  (marketplace, public API, AI verification, SMS) — Correct to do, wrong
   to do first. Deleting before the harness exists means deleting without being able to prove
   nothing else broke. Do it as the harness's first real job.
 - **New features, including the QR-code angler flow** — Nothing new gets built until the

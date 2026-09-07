@@ -18,8 +18,8 @@ migrations.
 | 3 | Registration + Stripe Connect payments | ✅ Complete |
 | 4 | Live tournament, catch submission, real-time leaderboards | ✅ Complete |
 | 5 | Mobile app polish, Expo auth, EAS build config | ✅ Complete |
-| 6 | Custom domains, sponsors, analytics, email + SMS notifications | ✅ Complete |
-| 7 | Public API v1, marketplace, AI catch verification | ✅ Complete |
+| 6 | Custom domains, sponsors, analytics, email notifications | ✅ Complete |
+| 7 | ~~Public API v1, marketplace, AI catch verification, SMS~~ | ❌ Deleted 2026-09-06 |
 
 ---
 
@@ -190,15 +190,7 @@ pnpm turbo run dev --filter=@tourneyforge/mobile   # Expo dev server
 - Sponsor management with tier system: Title, Gold, Silver, Bronze
 - Analytics dashboard (Pro/Enterprise): registrations, revenue, catches
 - Email notifications via Resend (registration confirmation, tournament alerts)
-- SMS notifications via Twilio (tournament start/end alerts to registered teams)
 - Custom domain management UI
-
-### Public API + AI Verification + Marketplace (Phase 7)
-- **Public API v1** (Enterprise): `x-api-key` auth, tournaments + leaderboard + registrations
-- **AI Catch Verification**: Claude claude-haiku-4-5 vision analyzes fish photos — species detection, size estimates, auto-approval on high confidence
-- **Marketplace**: Public tournament discovery page for anglers + sponsor marketplace for directors
-
----
 
 ## API Overview
 
@@ -212,10 +204,7 @@ pnpm turbo run dev --filter=@tourneyforge/mobile   # Expo dev server
 | `PATCH /api/catches/:id/verify` | Manually verify a catch (director) |
 | `POST /api/ai/verify-catch` | AI verify a catch photo |
 | `POST /api/stripe/connect` | Stripe Connect onboarding |
-| `GET /api/marketplace/tournaments` | Browse all public tournaments |
-| `GET /api/marketplace/sponsors` | Browse sponsor marketplace |
 
-### Public API v1 (Enterprise, `x-api-key` auth)
 | Route | Description |
 |-------|-------------|
 
@@ -228,7 +217,7 @@ pnpm turbo run dev --filter=@tourneyforge/mobile   # Expo dev server
 | Free | $0 | 1 tournament, basic scoring, TourneyForge branding |
 | Starter | $19/mo | 5 tournaments, custom colors |
 | Pro | $49/mo | Unlimited tournaments, analytics, custom domain, sponsor tools |
-| Enterprise | $149/mo | Everything + Public API v1, white label, priority support |
+| Enterprise | $149/mo | Everything + white label, priority support |
 
 ---
 

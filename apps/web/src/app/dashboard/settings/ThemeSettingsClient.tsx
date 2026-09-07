@@ -192,7 +192,7 @@ export function ThemeSettingsClient({
       <section className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-1">Logo</h2>
         <p className="text-sm text-gray-500 mb-4">
-          Shown in your site header and on the tournament marketplace. PNG, JPG, WebP, or SVG — up to 5 MB.
+          Shown in your site header and on your public tournament pages. PNG, JPG, WebP, or SVG — up to 5 MB.
         </p>
 
         {logoUrl && (
