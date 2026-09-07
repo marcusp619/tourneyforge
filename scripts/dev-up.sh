@@ -29,6 +29,24 @@ wait_for() {
 
 listening() { timeout 2 bash -c "</dev/tcp/127.0.0.1/$1" 2>/dev/null; }
 
+# WHO holds the port, not merely whether something does.
+#
+# "Port occupied" is not "our server is running". Measured on 2026-09-06: another
+# project on this machine (a different Next app, a different Next version) was serving
+# :3000, and because this script only checked that the port answered, it skipped
+# starting web, printed "Ready  Web http://localhost:3000" and handed every downstream
+# check a foreign application to assert against. Every tenant route 404'd and it looked
+# exactly like a regression in this repo.
+port_owner_pid() {
+  ss -ltnp 2>/dev/null | grep ":$1 " | grep -oP 'pid=\K[0-9]+' | head -1
+}
+port_is_ours() {
+  local pid cwd
+  pid=$(port_owner_pid "$1"); [ -n "$pid" ] || return 1
+  cwd=$(readlink "/proc/$pid/cwd" 2>/dev/null) || return 1
+  case "$cwd" in "$ROOT"|"$ROOT"/*) return 0 ;; *) return 1 ;; esac
+}
+
 # ---------------------------------------------------------------- services
 # --wait must NAME the long-running services: minio-setup is a one-shot `mc`
 # container that exits 0, and --wait counts an exited dependency as failure.
@@ -72,7 +90,15 @@ fi
 # ---------------------------------------------------------------- servers
 start_bg() { # start_bg NAME PORT DIR CMD...
   local name=$1 port=$2 dir=$3; shift 3
-  if listening "$port"; then log "$name already on :$port"; return 0; fi
+  if listening "$port"; then
+    if port_is_ours "$port"; then log "$name already on :$port"; return 0; fi
+    local pid cwd
+    pid=$(port_owner_pid "$port"); cwd=$(readlink "/proc/$pid/cwd" 2>/dev/null || echo "?")
+    die ":$port is held by pid $pid from a DIFFERENT project ($cwd).
+       Starting $name here would be skipped and every check would then assert against
+       that application instead of this one. Stop it, or re-run with ${name^^}_PORT set:
+         ${name^^}_PORT=3100 pnpm dev:up"
+  fi
   local logf="$ROOT/$RUN_DIR/$name.log"
   log "starting $name..."
   # Absolute log path: the `cd` happens in the backgrounded subshell, so a relative
