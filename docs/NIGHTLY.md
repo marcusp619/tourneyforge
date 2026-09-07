@@ -628,7 +628,9 @@ answers it. If the E2E suite is not green before this task starts, do not start 
 ---
 
 ### Task 9 — Delete AI verification and the marketplace  **(large)**
-**Blocked by:** task 7
+**Status: DONE 2026-09-06.** Both surfaces gone incl. the `marketplace_sponsors` table,
+the `@anthropic-ai/sdk` dependency, nav entries and marketing links. Phase 6 sponsors
+survived, asserted. E2E green.
 
 Goal: the other two Phase 7 surfaces. Unlike task 8 these have web UI, so the deletion
 reaches into `apps/web`.

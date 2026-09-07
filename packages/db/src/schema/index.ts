@@ -5,4 +5,3 @@ export * from "./tournaments";
 export * from "./teams-catches";
 export * from "./themes";
 export * from "./sponsors";
-export * from "./marketplace";

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, Palette, BarChart3, Store, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Trophy, Palette, BarChart3, ArrowRight, CheckCircle2 } from "lucide-react";
 
 const LOCAL_DEV = process.env.LOCAL_DEV === "true";
 
@@ -37,13 +37,6 @@ export default async function DashboardPage() {
       href: "/dashboard/analytics",
       cta: "View Analytics",
       Icon: BarChart3,
-    },
-    {
-      label: "Sponsor Marketplace",
-      description: "Find brands looking to sponsor fishing tournaments",
-      href: "/dashboard/marketplace",
-      cta: "Browse Sponsors",
-      Icon: Store,
     },
   ];
 

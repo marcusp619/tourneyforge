@@ -4,7 +4,6 @@ import { eq, and, isNull } from "drizzle-orm";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { verifyCatch, deleteCatch } from "@/actions/catches";
-import { AiVerifyButton } from "./AiVerifyButton";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -154,14 +153,6 @@ export default async function TournamentCatchesPage({ params }: Props) {
                       {isVerified ? "Unverify" : "Verify"}
                     </button>
                   </form>
-                  {row.photoUrl && !isVerified && (
-                    <AiVerifyButton
-                      catchId={row.id}
-                      tournamentId={id}
-                      photoUrl={row.photoUrl}
-                      speciesName={row.speciesName ?? null}
-                    />
-                  )}
                   <form action={deleteAction}>
                     <button
                       type="submit"

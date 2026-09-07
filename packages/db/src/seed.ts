@@ -6,7 +6,6 @@ import { tournaments, scoringFormats } from "./schema/tournaments";
 import type { NewScoringFormat } from "./schema/tournaments";
 import { species, teams, catches } from "./schema/teams-catches";
 import { tenantMembers } from "./schema/tenant-members";
-import { marketplaceSponsors } from "./schema/marketplace";
 
 /**
  * Seed script for development
@@ -315,95 +314,12 @@ const seedSpecies = [
   { name: "Tarpon", commonName: "Tarpon", scientificName: "Megalops atlanticus" },
 ];
 
-const seedMarketplaceSponsors = [
-  {
-    name: "Bass Pro Shops",
-    description: "America's largest retailer of outdoor sporting goods — tackle, boats, apparel, and more.",
-    website: "https://www.basspro.com",
-    contactEmail: "sponsorships@basspro.com",
-    categories: "tackle,apparel,electronics,boats",
-    budgetTier: "national" as const,
-    featured: true,
-    active: true,
-  },
-  {
-    name: "Tackle Warehouse",
-    description: "Online superstore for bass fishing lures, rods, reels, and terminal tackle.",
-    website: "https://www.tacklewarehouse.com",
-    contactEmail: "sponsor@tacklewarehouse.com",
-    categories: "tackle,accessories",
-    budgetTier: "regional" as const,
-    featured: true,
-    active: true,
-  },
-  {
-    name: "Humminbird",
-    description: "Industry-leading fish finders, chartplotters, and sonar technology for tournament anglers.",
-    website: "https://www.humminbird.com",
-    contactEmail: "tournaments@humminbird.com",
-    categories: "electronics,sonar",
-    budgetTier: "national" as const,
-    featured: false,
-    active: true,
-  },
-  {
-    name: "Lew's Fishing",
-    description: "Premium fishing rods and reels engineered for competitive tournament anglers.",
-    website: "https://www.lewsfishing.com",
-    contactEmail: "sponsorships@lewsfishing.com",
-    categories: "rods,reels,tackle",
-    budgetTier: "regional" as const,
-    featured: false,
-    active: true,
-  },
-  {
-    name: "Mossy Oak",
-    description: "Outdoor lifestyle brand offering camouflage apparel, headwear, and fishing gear.",
-    website: "https://www.mossyoak.com",
-    contactEmail: "events@mossyoak.com",
-    categories: "apparel,accessories",
-    budgetTier: "regional" as const,
-    featured: false,
-    active: true,
-  },
-  {
-    name: "Costa Del Mar",
-    description: "Performance sunglasses engineered for the water — the preferred choice of tournament anglers.",
-    website: "https://www.costadelmar.com",
-    contactEmail: "fishing@costadelmar.com",
-    categories: "apparel,accessories",
-    budgetTier: "national" as const,
-    featured: false,
-    active: true,
-  },
-  {
-    name: "Berkley Fishing",
-    description: "World's most trusted fishing line, soft baits, and hard baits since 1937.",
-    website: "https://www.berkley-fishing.com",
-    contactEmail: "sponsorships@berkley-fishing.com",
-    categories: "tackle,line",
-    budgetTier: "national" as const,
-    featured: false,
-    active: true,
-  },
-  {
-    name: "Local Lake Marina",
-    description: "Full-service marina and bait shop serving the local fishing community for over 30 years.",
-    website: "https://example.com/localakemarina",
-    contactEmail: "info@locallakemarina.com",
-    categories: "bait,boats,fuel,food",
-    budgetTier: "local" as const,
-    featured: false,
-    active: true,
-  },
-];
 
 async function seed() {
   console.log("🌱 Starting seed...");
 
   // Clear existing data (in development)
   console.log("🧹 Cleaning existing data...");
-  await db.delete(marketplaceSponsors);
   await db.delete(catches);
   await db.delete(teams);
   await db.delete(tenantMembers);
@@ -517,10 +433,6 @@ async function seed() {
     `   ✅ Created ${seedCompletedTeams.length} teams and ${seedCompletedCatches.length} catches`
   );
 
-  // Seed marketplace sponsors (platform-wide)
-  console.log("🤝 Seeding marketplace sponsors...");
-  await db.insert(marketplaceSponsors).values(seedMarketplaceSponsors);
-  console.log(`   ✅ Created ${seedMarketplaceSponsors.length} marketplace sponsor listings`);
 
   console.log("\n✨ Seed complete!");
   console.log("\n📝 Test accounts:");

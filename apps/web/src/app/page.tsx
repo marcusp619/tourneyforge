@@ -43,9 +43,6 @@ export default function HomePage() {
             <span>🎣</span> TourneyForge
           </Link>
           <nav className="flex items-center gap-4">
-            <Link href="/marketplace" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Browse Tournaments
-            </Link>
             <Button asChild variant="ghost" size="sm">
               <Link href="/sign-in">Sign In</Link>
             </Button>
@@ -84,7 +81,6 @@ export default function HomePage() {
               <Link href="/sign-up">Start Free <ArrowRight className="h-4 w-4" /></Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="border-white/60 text-white hover:bg-white/10 backdrop-blur-sm">
-              <Link href="/marketplace">Browse Tournaments</Link>
             </Button>
           </div>
         </div>

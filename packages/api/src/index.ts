@@ -16,8 +16,6 @@ import { registrationRouter } from "./routes/registrations";
 import { stripeRouter } from "./routes/stripe";
 import { catchRouter } from "./routes/catches";
 import { sponsorRouter } from "./routes/sponsors";
-import { aiRouter } from "./routes/ai";
-import { marketplaceRouter } from "./routes/marketplace";
 
 // Create main app
 const app = new Hono();
@@ -40,8 +38,6 @@ app.route("/api/registrations", registrationRouter);
 app.route("/api/catches", catchRouter);
 app.route("/api/stripe", stripeRouter);
 app.route("/api/sponsors", sponsorRouter);
-app.route("/api/ai", aiRouter);
-app.route("/api/marketplace", marketplaceRouter);
 
 // Start server
 const port = process.env.PORT ?? 3001;

@@ -9,7 +9,6 @@ import {
   SlidersHorizontal,
   BarChart3,
   Settings,
-  Store,
 } from "lucide-react";
 
 const LOCAL_DEV = process.env.LOCAL_DEV === "true";
@@ -19,7 +18,6 @@ const navItems = [
   { href: "/dashboard/tournaments", label: "Tournaments", icon: Trophy },
   { href: "/dashboard/scoring-formats", label: "Scoring Formats", icon: SlidersHorizontal },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/dashboard/marketplace", label: "Sponsor Marketplace", icon: Store },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
