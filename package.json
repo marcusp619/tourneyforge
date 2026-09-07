@@ -16,6 +16,7 @@
     "dev:up": "bash scripts/dev-up.sh"
   },
   "devDependencies": {
+    "postgres": "^3.4.5",
     "prettier": "^3.5.2",
     "turbo": "^2.8.16",
     "typescript": "^5.9.3"

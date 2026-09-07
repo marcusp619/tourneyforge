@@ -47,9 +47,11 @@ tourneyforge/
 
 ### Run it offline — no cloud accounts, no keys, no bill
 
-**This is the recommended way to run TourneyForge, and the way CI runs it.** The whole
-product runs on your machine against a docker stack, with **no cloud accounts** and
-nothing to pay for. You do not need Neon, Clerk, Stripe, Upstash, Cloudflare R2 or Resend
+**This is the recommended way to run TourneyForge locally.** The whole product runs on
+your machine against a docker stack, with **no cloud accounts** and nothing to pay for.
+
+(CI does *not* run this stack yet — it runs typecheck, lint and the unit tests only.
+Standing the harness up in CI is task 7 in `docs/NIGHTLY.md`.) You do not need Neon, Clerk, Stripe, Upstash, Cloudflare R2 or Resend
 to develop against it.
 
 ```bash

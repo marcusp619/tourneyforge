@@ -401,8 +401,10 @@ async function seed() {
   console.log(`   ✅ Created tenant memberships`);
 
   // Insert scoring formats for each tenant.
-  // Only the primary tenant's rows carry pinned ids — those are the ones
-  // seedTournaments references. Every other tenant gets database-generated ids.
+  // Every tenant listed in `seedFormatIds` gets PINNED ids, so a tournament in any club
+  // can reference a format belonging to its own club. A tenant absent from that map
+  // falls back to database-generated ids — which is fine only if it owns no tournament,
+  // and `scripts/check-seed.ts` fails if it does.
   console.log("📊 Seeding scoring formats...");
   for (const tenant of insertedTenants) {
     const pinned = seedFormatIds[tenant.slug];
