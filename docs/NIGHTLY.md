@@ -432,7 +432,10 @@ A source grep for a second tenant's name proves nothing — the row has to reach
 ---
 
 ### Task 5 — The results archive seeds empty  `[R7]`
-**Blocked by:** task 2 — this Verify block calls `pnpm dev:up`, which does not exist until then. It was filed under "no Docker required"; that was wrong.
+**Status: DONE 2026-09-06.** A completed "Fall Classic" with 3 teams and 9 catches;
+`check-seed.ts` deadline rule split per status (completed exempt into a *stricter*
+rule, nothing loosened), mutation-tested three ways. Archive renders the podium in
+weight order.
 
 Goal: R2 made every seeded `registrationDeadline` fall in the future, which by
 construction makes a `completed` tournament unseedable — so the public `/results`
@@ -451,8 +454,21 @@ timeout 120 bun run scripts/check-seed.ts        # must be extended, not weakene
 timeout 300 pnpm dev:up
 capture_into SLUG "tenant with a completed tournament" "timeout 30 docker compose exec -T postgres \
   psql -U tf -d tourneyforge -tAc \"select n.slug from tenants n join tournaments t on t.tenant_id=n.id where t.status='completed' limit 1\""
-must_contain_literal "results archive is not empty" \
+must_contain_literal "results archive renders" \
   "timeout 60 curl -fsS -H \"Host: ${SLUG}.localhost\" localhost:3000/results" "Final"
+# STRENGTHENED 2026-09-06. "Final" alone is HOLLOW: it is static page furniture —
+# `Final standings from all completed {tenant} tournaments` — rendered whether or not a
+# single result exists. Once any completed tournament exists it proves only that the page
+# returned. Assert the actual podium: capture the winning team from the database and
+# require the page to name it.
+capture_into WINNER "top team in the completed tournament" \
+  "timeout 30 docker compose exec -T postgres psql -U tf -d tourneyforge -tAc \
+   \"select tm.name from catches c join teams tm on tm.id=c.team_id \
+     join tournaments t on t.id=c.tournament_id \
+    where t.status='completed' and c.deleted_at is null \
+    group by tm.name order by sum(c.weight::int) desc limit 1\""
+must_contain_literal "results archive shows real standings" \
+  "timeout 60 curl -fsS -H \"Host: ${SLUG}.localhost\" localhost:3000/results" "$WINNER"
 ```
 Guardrail: extending `check-seed.ts` to express a more precise rule is correct.
 Loosening it so a past deadline stops being an error is not.
