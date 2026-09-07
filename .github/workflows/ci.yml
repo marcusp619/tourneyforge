@@ -113,3 +113,59 @@ jobs:
         working-directory: packages/api
         # DATABASE_URL is set by test/setup.ts preload — no real DB needed
         run: bun test
+
+  e2e:
+    name: Test / E2E Money Path
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The offline stack: the same docker-compose.yml and the same tracked .env
+      # templates a developer uses. If CI needed different configuration from a laptop,
+      # a green run here would not tell you the laptop works.
+      - name: Point at the offline stack
+        run: |
+          cp apps/web/.env.local.docker apps/web/.env.local
+          cp packages/api/.env.docker    packages/api/.env
+          cp packages/db/.env.docker     packages/db/.env
+
+      - name: Install Playwright browser
+        run: pnpm --filter @tourneyforge/web exec playwright install --with-deps chromium
+
+      # dev:up brings up docker, waits on real health AND on DATABASE_URL being
+      # reachable, pushes the schema, seeds, starts both servers and returns.
+      - name: Start the stack
+        run: pnpm dev:up
+
+      - name: Run the money path
+        run: pnpm test:e2e
+
+      - name: Upload failure trace
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-trace
+          path: apps/web/test-results/
+          retention-days: 7
+
+      - name: Server logs on failure
+        if: failure()
+        run: tail -100 .dev/api.log .dev/web.log || true

@@ -342,8 +342,11 @@ must_contain_literal "prints URLs" "timeout 120 pnpm dev:up" "localhost:3000"
 # checks the fact that actually predicts whether the API works. A healthy container
 # behind an unreachable DATABASE_URL is precisely the state a container-only check
 # passes and the product fails on.
-# `cmd && fail ...` is wrong here: when cmd correctly FAILS, && short-circuits and the
-# block still exits with cmd's non-zero status, reporting a pass as a failure.
+# CORRECTION 2026-09-06: an earlier note here claimed `cmd && fail ...` misreports a
+# correct failure. That was WRONG, and proved wrong by running it — `set -e` does not
+# abort on the left operand of `&&`, so a failing cmd short-circuits to a clean exit and
+# `fail` only runs when cmd wrongly succeeds. The pattern is sound. This form is kept
+# only because it is explicit and emits a `pass` line on success.
 if DATABASE_URL='postgres://tf:tf@127.0.0.1:1/tourneyforge' timeout 180 pnpm dev:up >/dev/null 2>&1
 then die "dev:up succeeded with no reachable database — it is not checking health"
 else pass "dev:up fails when DATABASE_URL is unreachable"
@@ -506,10 +509,11 @@ timeout 300 pnpm dev:up && timeout 900 pnpm test:e2e
 # /tmp/api.pid is created by nothing in this repo — dev-up.sh records .dev/api.pid — so
 # under `set -e` the `cat` aborted the block before the mutation was ever tested. The
 # same line also captured the SUBSHELL's pid rather than bun's (see task 1) and would
-# have raced a second API onto an occupied :3001. And `pnpm test:e2e && fail ...` reports
-# a CORRECT failure as a failure, because && short-circuits and the block exits with the
-# command's non-zero status (see task 2). All three repaired; the assertion is unchanged
-# and is the one that carries this task.
+# have raced a second API onto an occupied :3001. (The third thing this note used to
+# claim — that `pnpm test:e2e && fail ...` misreports a correct failure — was WRONG.
+# Task 7's block was probed with the mutation disabled and correctly exited 1; `set -e`
+# does not abort on the left operand of `&&`. The pattern is sound.) The assertion is
+# unchanged and is the one that carries this task.
 W=$(workdir)
 cp packages/scoring/src/index.ts "$W/scoring.bak"
 trap 'cp "$W/scoring.bak" packages/scoring/src/index.ts; rm -rf "$W"' EXIT
@@ -535,7 +539,10 @@ mutation check above is what actually carries this task.
 ---
 
 ### Task 7 — CI runs the harness  `[G5]`
-**Blocked by:** task 6
+**Status: DONE 2026-09-06 (advisory only).** `Test / E2E Money Path` job added: same
+docker-compose and same tracked `.env*.docker` templates a laptop uses, `pnpm dev:up`,
+`pnpm test:e2e`, trace + server logs uploaded on failure. Verify exit 0, including the
+product-mutation red case. **Still needs the human step below.**
 
 Goal: green enforced by something outside the agent's reach.
 
