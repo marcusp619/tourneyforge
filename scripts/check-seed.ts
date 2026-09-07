@@ -8,7 +8,12 @@
  * backtick. This runs the real fixtures instead.
  *
  * Checks:
- *   1. every registrationDeadline is in the future relative to Date.now()
+ *   1. registrationDeadline is in the future for every OPEN or DRAFT tournament —
+ *      those are the ones the register page calls notFound() on. A COMPLETED
+ *      tournament must be entirely in the PAST, and at least one must exist, or the
+ *      public results archive has nothing to render. This is a split of the original
+ *      blanket rule, not a relaxation of it: the future-deadline requirement still
+ *      applies in full everywhere it was ever meaningful.
  *   2. at least one tournament is `open` and at least one is `active`
  *   3. every scoringFormatId is non-null AND names a scoring format the seed
  *      actually creates (a dangling uuid is as useless as a null one)
@@ -68,7 +73,27 @@ for (const tournament of seedTournaments) {
   const deadline = tournament.registrationDeadline;
   if (!(deadline instanceof Date) || Number.isNaN(deadline.getTime())) {
     fail(`${label}: registrationDeadline is not a valid Date`);
+  } else if (tournament.status === "completed") {
+    // A finished tournament must be wholly in the past — a "completed" tournament whose
+    // dates are in the future is not a result, it is a contradiction.
+    for (const [field, value] of [
+      ["registrationDeadline", deadline],
+      ["startDate", tournament.startDate],
+      ["endDate", tournament.endDate],
+    ] as const) {
+      if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
+        fail(`${label}: ${field} is not a valid Date`);
+      } else if (value.getTime() > now) {
+        fail(
+          `${label}: is completed but its ${field} ${value.toISOString()} is in the ` +
+            "future — a finished tournament cannot end after now"
+        );
+      }
+    }
   } else if (deadline.getTime() <= now) {
+    // Everything not completed keeps the ORIGINAL rule unchanged. Only `completed` is
+    // exempt, and it is exempt into a stricter rule, not out of one — so this split
+    // loosens nothing.
     fail(
       `${label}: registrationDeadline ${deadline.toISOString()} is not in the future — ` +
         "the registration page calls notFound() on this tournament"
@@ -112,6 +137,12 @@ if (publicClubs.size < 2) {
 
 // -------------------------------------------------------- 2: statuses present
 const statuses = seedTournaments.map((tournament) => tournament.status);
+if (!statuses.includes("completed")) {
+  fail(
+    "no seeded tournament has status \"completed\" — the public results archive at " +
+      "/[tenant]/results renders nothing without one"
+  );
+}
 for (const required of ["open", "active"] as const) {
   if (!statuses.includes(required)) {
     fail(`no seeded tournament has status "${required}" (saw: ${statuses.join(", ") || "none"})`);
@@ -146,6 +177,7 @@ if (failures.length > 0) {
 console.log(
   `check-seed: ok — ${seedTournaments.length} tournaments, ` +
     `${seedScoringFormats.length} scoring formats; ` +
-    `statuses [${statuses.join(", ")}]; all deadlines in the future; ` +
+    `statuses [${statuses.join(", ")}]; unfinished deadlines in the future, ` +
+    `completed ones in the past; ` +
     `${publicClubs.size} clubs publicly visible [${[...publicClubs].join(", ")}]`
 );

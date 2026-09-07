@@ -4,7 +4,7 @@ import { tenants } from "./schema/tenants";
 import { users } from "./schema/users";
 import { tournaments, scoringFormats } from "./schema/tournaments";
 import type { NewScoringFormat } from "./schema/tournaments";
-import { species } from "./schema/teams-catches";
+import { species, teams, catches } from "./schema/teams-catches";
 import { tenantMembers } from "./schema/tenant-members";
 import { marketplaceSponsors } from "./schema/marketplace";
 
@@ -87,6 +87,9 @@ const LENGTH_FORMAT_ID = "76ffce93-8673-49a4-9d33-455243e74914";
  * you (RLS is defined and not enforced; see tasks 11 and 12). `scripts/check-seed.ts`
  * asserts the ownership, which is the only thing that does.
  */
+/** Pinned so the completed tournament's teams and catches can reference it. */
+const COMPLETED_TOURNAMENT_ID = "7f1b2c3d-4e5a-4b6c-9d8e-1a2b3c4d5e6a";
+
 export const seedFormatIds: Record<string, { weight: string; length: string }> = {
   "midwest-bass": { weight: WEIGHT_FORMAT_ID, length: LENGTH_FORMAT_ID },
   "carolina-kayak": {
@@ -146,6 +149,8 @@ export type SeedTournament = {
   scoringFormatId: string;
   /** Slug of the tenant that owns this tournament. */
   tenantSlug: string;
+  /** Pinned only where later fixtures must reference the row. */
+  id?: string;
 };
 
 /**
@@ -216,8 +221,50 @@ export function buildSeedTournaments(now: number = Date.now()): SeedTournament[]
       scoringFormatId: seedFormatIds["lake-norman-bass"]!.weight,
       tenantSlug: "lake-norman-bass",
     },
+    // A FINISHED tournament, entirely in the past. Without one the public results
+    // archive at /[tenant]/results has nothing to render — R2 made every deadline fall
+    // in the future, which by construction made a completed tournament unseedable.
+    // The deadline rule is therefore per-status now; see scripts/check-seed.ts.
+    {
+      id: COMPLETED_TOURNAMENT_ID,
+      name: "Fall Classic",
+      description: "Last season's finale. Five-fish limit, weighed at the marina.",
+      startDate: new Date(now - 30 * DAY_MS),
+      endDate: new Date(now - 30 * DAY_MS + 9 * HOUR_MS),
+      registrationDeadline: new Date(now - 37 * DAY_MS),
+      status: "completed",
+      scoringFormatId: WEIGHT_FORMAT_ID,
+      tenantSlug: "midwest-bass",
+    },
   ];
 }
+
+/**
+ * Teams and catches for the completed tournament, so the archive has real standings.
+ *
+ * The finishing order is deliberately neither alphabetical nor insertion order —
+ * Drag Peelers (194 oz), Reel Deal (185 oz), Bass Assassins (174 oz) — so a leaderboard
+ * that silently fell back to either would be visibly wrong rather than coincidentally
+ * right. Weight is stored as ounces in a text column; every length clears the format's
+ * 12-inch minimum.
+ */
+export const seedCompletedTeams = [
+  { id: "8a2c3d4e-5f6a-4b7c-8d9e-2b3c4d5e6f7a", name: "Reel Deal", captainId: "user-1" },
+  { id: "9b3d4e5f-6a7b-4c8d-9e0f-3c4d5e6f7a8b", name: "Bass Assassins", captainId: "user-2" },
+  { id: "0c4e5f6a-7b8c-4d9e-8f0a-4d5e6f7a8b9c", name: "Drag Peelers", captainId: "user-3" },
+] as const;
+
+export const seedCompletedCatches: { teamId: string; weightOz: number; lengthIn: number }[] = [
+  { teamId: seedCompletedTeams[0].id, weightOz: 70, lengthIn: 21 },
+  { teamId: seedCompletedTeams[0].id, weightOz: 60, lengthIn: 19 },
+  { teamId: seedCompletedTeams[0].id, weightOz: 55, lengthIn: 18 },
+  { teamId: seedCompletedTeams[1].id, weightOz: 66, lengthIn: 20 },
+  { teamId: seedCompletedTeams[1].id, weightOz: 58, lengthIn: 19 },
+  { teamId: seedCompletedTeams[1].id, weightOz: 50, lengthIn: 17 },
+  { teamId: seedCompletedTeams[2].id, weightOz: 72, lengthIn: 22 },
+  { teamId: seedCompletedTeams[2].id, weightOz: 64, lengthIn: 20 },
+  { teamId: seedCompletedTeams[2].id, weightOz: 58, lengthIn: 18 },
+];
 
 export const seedTournaments: SeedTournament[] = buildSeedTournaments();
 
@@ -357,6 +404,8 @@ async function seed() {
   // Clear existing data (in development)
   console.log("🧹 Cleaning existing data...");
   await db.delete(marketplaceSponsors);
+  await db.delete(catches);
+  await db.delete(teams);
   await db.delete(tenantMembers);
   await db.delete(tournaments);
   await db.delete(scoringFormats);
@@ -366,7 +415,7 @@ async function seed() {
 
   // Seed species (system-wide)
   console.log("🐟 Seeding species...");
-  await db.insert(species).values(seedSpecies);
+  const insertedSpecies = await db.insert(species).values(seedSpecies).returning({ id: species.id });
   console.log(`   ✅ Created ${seedSpecies.length} species`);
 
   // Insert tenants
@@ -434,6 +483,39 @@ async function seed() {
     })
   );
   console.log(`   ✅ Created ${seedTournaments.length} tournaments`);
+
+  // Teams and catches for the completed tournament, so /[tenant]/results has standings
+  // to rank rather than an empty archive.
+  console.log("🎣 Seeding finished tournament results...");
+  const completedTenantId = tenantIdBySlug.get("midwest-bass");
+  const anySpeciesId = insertedSpecies[0]?.id;
+  if (!completedTenantId) throw new Error("seed: midwest-bass tenant missing");
+  if (!anySpeciesId) throw new Error("seed: no species were inserted");
+  await db.insert(teams).values(
+    seedCompletedTeams.map((team) => ({
+      id: team.id,
+      tenantId: completedTenantId,
+      tournamentId: COMPLETED_TOURNAMENT_ID,
+      name: team.name,
+      captainId: team.captainId,
+    }))
+  );
+  const caughtAt = new Date(Date.now() - 30 * DAY_MS + 4 * HOUR_MS);
+  await db.insert(catches).values(
+    seedCompletedCatches.map((c) => ({
+      tenantId: completedTenantId,
+      tournamentId: COMPLETED_TOURNAMENT_ID,
+      teamId: c.teamId,
+      speciesId: anySpeciesId,
+      weight: String(c.weightOz),
+      length: String(c.lengthIn),
+      timestamp: caughtAt,
+      verified: "true",
+    }))
+  );
+  console.log(
+    `   ✅ Created ${seedCompletedTeams.length} teams and ${seedCompletedCatches.length} catches`
+  );
 
   // Seed marketplace sponsors (platform-wide)
   console.log("🤝 Seeding marketplace sponsors...");

@@ -106,7 +106,11 @@ start_bg() { # start_bg NAME PORT DIR CMD...
   # </dev/null and both streams redirected: a child that inherits this script's stdout
   # holds the write end of any pipe we are in, and `pnpm dev:up | tail` then never
   # returns even though every server is up. Measured — that is why this script hung.
-  ( cd "$dir" && exec setsid nohup "$@" </dev/null >"$logf" 2>&1 & ) 
+  # Pass the port THROUGH to the server. Both `next dev` and the Hono/Bun entrypoint
+  # read PORT; without this, overriding WEB_PORT only moved the port this script waits
+  # on while the server still bound 3000 — the override the failure message suggests
+  # would have timed out instead of working.
+  ( cd "$dir" && PORT="$port" exec setsid nohup "$@" </dev/null >"$logf" 2>&1 & ) 
   wait_for "$name on :$port" 120 "timeout 2 bash -c '</dev/tcp/127.0.0.1/$port'"
   # $! would be setsid's pid, not the server's. Ask the kernel who actually holds the port.
   ss -ltnp 2>/dev/null | grep ":$port " | grep -oP 'pid=\K[0-9]+' | head -1 \
