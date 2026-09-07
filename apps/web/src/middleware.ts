@@ -47,7 +47,16 @@ async function resolveTenant(req: NextRequest): Promise<NextResponse | null> {
   if (hostname.endsWith(".localhost")) {
     const subdomain = hostname.replace(/\.localhost$/, "");
     if (subdomain && subdomain !== "www") {
-      const newUrl = new URL(`/${subdomain}${url.pathname}`, req.url);
+      // Do NOT prepend a slug that is already there. Pages on the tenant site build
+      // their hrefs as `/${slug}/...` because the routes live under app/[tenant]/ — so
+      // on a subdomain those links arrive already prefixed and blind prepending turns
+      // /midwest-bass/tournaments/<id> into /midwest-bass/midwest-bass/tournaments/<id>,
+      // which 404s. Every tournament link on the public list was dead on the subdomain;
+      // found by clicking, in the e2e money-path test.
+      const alreadyPrefixed =
+        url.pathname === `/${subdomain}` || url.pathname.startsWith(`/${subdomain}/`);
+      const rewritten = alreadyPrefixed ? url.pathname : `/${subdomain}${url.pathname}`;
+      const newUrl = new URL(rewritten, req.url);
       const requestHeaders = new Headers(req.headers);
       requestHeaders.set("x-tenant-slug", subdomain);
       return NextResponse.rewrite(newUrl, { request: { headers: requestHeaders } });

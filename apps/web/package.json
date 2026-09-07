@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint src/",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.741.0",
@@ -44,6 +45,7 @@
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4.2.1",
     "@tourneyforge/config": "workspace:*",
     "@types/node": "^22.13.4",

@@ -476,7 +476,11 @@ Loosening it so a past deadline stops being an error is not.
 ---
 
 ### Task 6 — The web money path, proven through the UI  `[G4a]` **(large)**
-**Blocked by:** tasks 2, 4
+**Status: DONE 2026-09-06.** Playwright + chromium installed, `apps/web/e2e/`,
+`test:e2e`. Director creates and publishes a tournament, three anglers register, the
+director starts it, the leaderboard ranks them — every page reached by clicking.
+Mutation-checked: inverting the scoring comparator turns the suite red.
+**Found a real bug doing it** — on a tenant subdomain every tournament link 404'd.
 
 Goal: one Playwright test: **director creates tournament -> angler registers ->
 leaderboard ranks correctly**, every step reached by clicking.
@@ -497,13 +501,30 @@ must_not_match 'retries' apps/web/package.json
 timeout 300 pnpm dev:up && timeout 900 pnpm test:e2e
 # THE check that cannot be satisfied hollowly. Restart the API after mutating, or it
 # keeps serving the pre-mutation module — `bun run` has no --watch.
-cp packages/scoring/src/index.ts /tmp/scoring.bak
-trap 'cp /tmp/scoring.bak packages/scoring/src/index.ts' EXIT
+# REPAIRED 2026-09-06. The original read:
+#   kill "$(cat /tmp/api.pid)" 2>/dev/null; (cd packages/api && bun run src/index.ts & echo $! > /tmp/api.pid)
+# /tmp/api.pid is created by nothing in this repo — dev-up.sh records .dev/api.pid — so
+# under `set -e` the `cat` aborted the block before the mutation was ever tested. The
+# same line also captured the SUBSHELL's pid rather than bun's (see task 1) and would
+# have raced a second API onto an occupied :3001. And `pnpm test:e2e && fail ...` reports
+# a CORRECT failure as a failure, because && short-circuits and the block exits with the
+# command's non-zero status (see task 2). All three repaired; the assertion is unchanged
+# and is the one that carries this task.
+W=$(workdir)
+cp packages/scoring/src/index.ts "$W/scoring.bak"
+trap 'cp "$W/scoring.bak" packages/scoring/src/index.ts; rm -rf "$W"' EXIT
 sed -i 's/b - a/a - b/' packages/scoring/src/index.ts
-kill "$(cat /tmp/api.pid)" 2>/dev/null; (cd packages/api && bun run src/index.ts & echo $! > /tmp/api.pid)
-timeout 60 bash -c 'until curl -fsS localhost:3001/ >/dev/null 2>&1; do sleep 2; done'
-timeout 900 pnpm test:e2e && fail "inverted the leaderboard comparator and the suite still passed"
-cp /tmp/scoring.bak packages/scoring/src/index.ts
+# Restart through dev:up, which kills nothing it does not own and refuses a foreign port.
+for P in 3000 3001; do
+  PID=$(ss -ltnp 2>/dev/null | grep ":$P " | grep -oP 'pid=\K[0-9]+' | head -1)
+  [ -n "$PID" ] && [ -n "$(readlink /proc/$PID/cwd 2>/dev/null | grep "^$PWD")" ] && kill "$PID"
+done
+timeout 300 pnpm dev:up
+if timeout 900 pnpm test:e2e
+then die "inverted the leaderboard comparator and the suite still passed"
+else pass "inverting the comparator turns the money-path suite red"
+fi
+cp "$W/scoring.bak" packages/scoring/src/index.ts
 ```
 Guardrail: register at least three teams whose totals produce an order that is neither
 alphabetical nor insertion order, and assert the full ordered list of names *and*

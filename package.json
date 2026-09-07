@@ -13,7 +13,8 @@
     "db:generate": "cd packages/db && bun run generate",
     "db:studio": "cd packages/db && bun run studio",
     "db:seed": "cd packages/db && bun run seed",
-    "dev:up": "bash scripts/dev-up.sh"
+    "dev:up": "bash scripts/dev-up.sh",
+    "test:e2e": "pnpm --filter @tourneyforge/web test:e2e"
   },
   "devDependencies": {
     "postgres": "^3.4.5",
