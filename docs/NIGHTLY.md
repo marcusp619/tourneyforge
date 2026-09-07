@@ -745,6 +745,37 @@ measured against the running stack; the evidence is quoted inside each task.
 ### Task 11 — The tenant boundary is an unauthenticated header  **(large)**
 **Blocked by:** tasks 4, 7
 
+**Status: DONE 2026-09-07.** `packages/api/src/middleware/tenant.ts` — `requireUser`
+resolves the caller (verified Clerk bearer token, or a fixed identity under `LOCAL_DEV`),
+`requireTenant` resolves the club from `tenant_members`. No route reads the header; it
+survives only as a preference for multi-club callers and is checked against membership
+first. Live: a forged `x-tenant-id` returns **403**, and the mutation check confirms the
+Verify block goes red when the membership check is removed (it returns 400 there, not
+200 — still outside the accepted set, so the assertion holds).
+
+Wider than specified, because the header was not the only unauthenticated way to name a
+club: `PATCH /api/sponsors/:id` was scoped by id alone, `POST /api/sponsors` took
+`tenantId` from the body, and the `tenants`/`theme` routes took it from the path.
+`GET /api/tenants` returned every club on the platform with `apiKey` and
+`stripeConnectedAccountId` included, and `PATCH /api/tenants/:id` accepted `plan` — a
+free self-upgrade once auth existed. All closed here.
+
+Two findings while doing it:
+- `POST /api/catches` from the mobile app **could never have worked**: the app sends a
+  bearer token and no `x-tenant-id`, so every submission was a `400`. It returns 201 now.
+  The route cannot use `requireTenant` — an angler is not a club member — so it derives
+  the tenant from the tournament and authorises against `teams.captainId`. Teams with
+  more than one angler are not modelled, so only the captain can submit.
+- The web dashboard picked the `LOCAL_DEV` director's club with an unordered
+  `LIMIT 1` over `tenants`, i.e. by Postgres heap order. Updating any tenant row moved
+  it and the dashboard silently switched clubs — which is what took task 7's money-path
+  E2E red between 2026-09-06 and today. Now resolved from `tenant_members`, and proved
+  by re-running the E2E green against the heap order that had broken it.
+
+Still open, found and not fixed here: `apps/mobile` calls `POST /api/uploads/catch-photo`,
+a route that does not exist in `packages/api/src/routes/`. The failure is swallowed and
+submission proceeds without a photo URL.
+
 Goal: **the tenant boundary is a header anybody can set.** Every scoped route in
 `packages/api/src/routes/` reads `c.req.header("x-tenant-id")` and trusts it. Measured
 2026-09-02:
@@ -797,6 +828,10 @@ check asserts on the status code for that reason.
 
 ### Task 12 — Make RLS actually enforce  **(large)**
 **Blocked by:** task 11 — RLS keyed off an unverified header enforces nothing.
+**Unblocked 2026-09-07:** task 11 has landed, so there is now a verified tenant on the
+Hono context (`c.get("tenantId")`) for RLS to key off. Note that `getCurrentTenant()` in
+the web app resolves a tenant the same way but does **not** go through Hono — the web app
+reaches the database directly through server actions, so task 12 has to cover both.
 
 Goal: defense in depth behind task 11. `pgPolicy()` definitions exist on every tenant-scoped
 table and RLS is switched on — and **none of it runs.** Measured against the live stack

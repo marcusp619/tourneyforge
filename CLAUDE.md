@@ -123,10 +123,10 @@ bun test --watch                # watch mode
 ### Multi-Tenancy
 
 > ⚠️ **Tenant isolation is application-level only. Do not rely on the database to
-> enforce it.** The three bullets below describe the *intended* design. Two of the three
-> are not true today — measured against the running stack on 2026-09-02. Until tasks 11
-> and 12 in `docs/NIGHTLY.md` land, **every query you write must scope by `tenantId`
-> yourself**; nothing underneath will catch you.
+> enforce it.** The API now has a real boundary (task 11, 2026-09-07): a route learns its
+> tenant from the caller's `tenant_members` rows and never from the request. But the
+> database still enforces nothing — until task 12 in `docs/NIGHTLY.md` lands, **every
+> query you write must scope by `tenantId` yourself**; nothing underneath will catch you.
 
 - Single PostgreSQL database with `tenant_id` on every tenant-scoped table. ✅ True.
 - Row-Level Security via Drizzle `pgPolicy()`. **Defined, but never enforced.** The
@@ -140,9 +140,17 @@ bun test --watch                # watch mode
   `drizzle()` over a postgres.js pool and this repo calls `db.transaction` nowhere, so
   `SET LOCAL` would be a no-op — and a plain `SET` would persist on the pooled connection
   and leak the tenant into the next request. See task 12 for the required shape.
-- `x-tenant-id` is a **client-supplied header that nothing authenticates.** The API has no
-  Clerk import, no `getAuth`, no token verification, and never checks the header against
-  `tenant_members`. See task 11.
+- `x-tenant-id` used to be a **client-supplied header that nothing authenticated** — the
+  API had no Clerk import and never checked it against `tenant_members`, so
+  `curl -H 'x-tenant-id: <any club uuid>'` read and wrote that club's data. **Fixed
+  2026-09-07 (task 11).** `packages/api/src/middleware/tenant.ts` now resolves the caller
+  (a verified Clerk bearer token, or a fixed identity under `LOCAL_DEV`) and then the
+  tenant from that caller's `tenant_members` rows. The header survives only as a
+  *preference* for callers who belong to several clubs, and is checked against membership
+  before it is honoured; an id the caller cannot prove membership of is a 403.
+  **No route may read it.** `catches` submission is the one exception to `requireTenant`:
+  an angler is not a club member, so that route derives the tenant from the tournament
+  and authorises the caller against `teams.captainId` instead.
 
 ### Tenant Resolution (apps/web/middleware.ts)
 Order of resolution:
@@ -187,6 +195,16 @@ RESEND_API_KEY                        # Resend email API key
 NEXT_PUBLIC_ROOT_DOMAIN               # e.g., tourneyforge.com
 NEXT_PUBLIC_API_URL                   # e.g., https://api.tourneyforge.com
 ```
+
+Offline-stack only (`packages/api/.env`, `apps/web/.env.local`):
+```
+LOCAL_DEV=true                        # assume a fixed identity instead of Clerk
+LOCAL_DEV_USER_ID=user-1              # which seeded user that is
+```
+`LOCAL_DEV` assumes an *identity*, never a tenant — the club is still resolved from that
+user's `tenant_members` row in both the API and the web dashboard. The API throws if it
+sees `LOCAL_DEV=true` with `NODE_ENV=production`. The API needs `CLERK_SECRET_KEY` when
+`LOCAL_DEV` is unset: without either it verifies no tokens and authenticates nobody.
 
 ## Critical Constraints / Gotchas
 
@@ -257,29 +275,61 @@ Plan is stored on `tenants.plan` enum. Feature gating is enforced in the API mid
 
 ## Recent Changes
 
-### Security: Tenant Scope Enforcement (API Routes)
-All catches and registrations endpoints now require `x-tenant-id` header and
-scope every DB operation to that tenant. Previously `POST /api/catches` accepted
-any `tournamentId` without validating tenant ownership.
+### Security: the tenant boundary (2026-09-07, task 11)
+Scoping to a client-supplied `x-tenant-id` header was an improvement over accepting any
+`tournamentId`, but it was never a boundary — the header was unauthenticated. Every
+scoped route now takes its tenant from `packages/api/src/middleware/tenant.ts`.
 
-Fixed routes:
-- `GET|POST /api/catches` — `packages/api/src/routes/catches.ts`
-- `PATCH /api/catches/:id/verify` — scoped update to tenant
-- `DELETE /api/catches/:id` — scoped delete to tenant
-- `GET|GET /count|PATCH /api/registrations` — `packages/api/src/routes/registrations.ts`
+- `requireUser` — establishes *who* is calling. 401 if anonymous. Fails closed: with
+  neither `LOCAL_DEV` nor a `CLERK_SECRET_KEY` the API authenticates nobody.
+- `requireTenant` — establishes *which club* they act as, from `tenant_members`.
+  403 for a tenant they are not a member of; 400 (never a silent pick) when a
+  multi-club caller names none.
+- `LOCAL_DEV=true` assumes a fixed *identity* (`LOCAL_DEV_USER_ID`, default `user-1`),
+  never a tenant — so the offline stack exercises the same boundary. Refused under
+  `NODE_ENV=production`.
+
+Also closed while the boundary was going in, all the same class of hole:
+- `PATCH /api/sponsors/:id` was scoped by id alone — any caller could rewrite any club's
+  sponsor. `POST /api/sponsors` took `tenantId` from the request body.
+- `PATCH /api/tenants/:id` and the three `/:id/theme`, `/:id/logo*` routes took the club
+  from the path and trusted it.
+- `GET /api/tenants` returned every club on the platform including `apiKey` and
+  `stripeConnectedAccountId`. It now returns the caller's clubs, projected.
+- `PATCH /api/tenants/:id` accepted `plan`, so a club could upgrade itself for free.
+
+Side effect: `POST /api/catches` from the mobile app used to fail with
+`400 Missing x-tenant-id header` — the app sends a bearer token and no such header, and
+nothing in the repo ever set it. Catch submission works now.
+
+Still open: `apps/mobile` calls `POST /api/uploads/catch-photo`, a route that does not
+exist. Photo upload fails silently and submission continues without the URL.
 
 ### API Test Suite
-Added Bun test suite covering catches, registrations and public routes (39 tests).
+Added Bun test suite covering catches, registrations, public routes and the tenant
+middleware (51 tests).
 No Docker or local Postgres needed — `@tourneyforge/db` is mocked via `mock.module`.
 
-- `packages/api/test/catches.test.ts` — 16 tests
+- `packages/api/test/catches.test.ts` — 18 tests
 - `packages/api/test/registrations.test.ts` — 12 tests
 - `packages/api/test/public.test.ts` — 11 tests
+- `packages/api/test/middleware.test.ts` — 10 tests, the boundary itself
+- Every file's `mock.module("@tourneyforge/db")` must list *every* export any route
+  under test imports: bun shares one module registry across files and does not order
+  them deterministically, so an omission makes the suite pass or fail by file order.
 - `packages/api/test/setup.ts` — preload sets dummy DATABASE_URL for Bun validation
 - `packages/api/bunfig.toml` — wires preload into `bun test`
 - `packages/api/package.json` — added `"test"` script
 
 Run with: `cd packages/api && bun test`
+
+### Which club the dev dashboard administers (fixed 2026-09-07)
+`getCurrentTenant()` resolved the `LOCAL_DEV` director's club with
+`select().from(tenants).limit(1)` — an unordered `LIMIT 1`, so *which club you were
+administering* was decided by Postgres heap order. It looked stable until something
+updated a `tenants` row, which moves it in the heap; the dashboard then silently began
+administering a different club and the end-to-end money path went red. It now resolves
+from `tenant_members` for `LOCAL_DEV_USER_ID`, matching the API.
 
 ### Angler Discovery (decided 2026-09-02)
 Discovery in the mobile app is **cross-club**: `GET /api/public/tournaments` returns
