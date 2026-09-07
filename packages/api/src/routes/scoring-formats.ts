@@ -3,15 +3,17 @@ import { zValidator } from "@hono/zod-validator";
 import { db, scoringFormats } from "@tourneyforge/db";
 import { createScoringFormatSchema } from "@tourneyforge/validators";
 import { eq, and, isNull } from "drizzle-orm";
+import { requireTenant, requireUser, type TenantEnv } from "../middleware/tenant";
 
-export const scoringFormatRouter = new Hono();
+export const scoringFormatRouter = new Hono<TenantEnv>();
+
+// Every route below is tenant-scoped. The tenant comes from the caller's
+// membership, never from the request — see middleware/tenant.ts.
+scoringFormatRouter.use("*", requireUser, requireTenant);
 
 // Get all scoring formats for a tenant
 scoringFormatRouter.get("/", async (c) => {
-  const tenantId = c.req.header("x-tenant-id");
-  if (!tenantId) {
-    return c.json({ error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } }, 400);
-  }
+  const tenantId = c.get("tenantId");
 
   const formats = await db
     .select()
@@ -23,10 +25,7 @@ scoringFormatRouter.get("/", async (c) => {
 
 // Get a single scoring format
 scoringFormatRouter.get("/:id", async (c) => {
-  const tenantId = c.req.header("x-tenant-id");
-  if (!tenantId) {
-    return c.json({ error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } }, 400);
-  }
+  const tenantId = c.get("tenantId");
 
   const id = c.req.param("id");
   const [format] = await db
@@ -47,13 +46,7 @@ scoringFormatRouter.post(
   "/",
   zValidator("json", createScoringFormatSchema),
   async (c) => {
-    const tenantId = c.req.header("x-tenant-id");
-    if (!tenantId) {
-      return c.json(
-        { error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } },
-        400
-      );
-    }
+    const tenantId = c.get("tenantId");
 
     const body = c.req.valid("json");
     const [format] = await db
@@ -72,10 +65,7 @@ scoringFormatRouter.post(
 
 // Delete a scoring format
 scoringFormatRouter.delete("/:id", async (c) => {
-  const tenantId = c.req.header("x-tenant-id");
-  if (!tenantId) {
-    return c.json({ error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } }, 400);
-  }
+  const tenantId = c.get("tenantId");
 
   const id = c.req.param("id");
   const [deleted] = await db

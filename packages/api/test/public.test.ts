@@ -72,9 +72,15 @@ mock.module("@tourneyforge/db", () => {
     update: () => makeChain(),
     delete: () => makeChain(),
   };
+  // Every export used by ANY route under test in this directory must appear here,
+  // including ones this file's route never touches. bun shares one module registry
+  // across test files and does not order them deterministically, so whichever mock
+  // happens to be active must satisfy the named-import validation for all of them.
+  // Omitting `tenantMembers` here made the whole suite pass or fail by file order.
   return {
     db: mockDb,
     tenants: {},
+    tenantMembers: {},
     tournaments: {},
     teams: {},
     scoringFormats: {},

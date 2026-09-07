@@ -3,8 +3,13 @@ import { zValidator } from "@hono/zod-validator";
 import { db, tournamentDivisions, tournaments } from "@tourneyforge/db";
 import { eq, and, isNull } from "drizzle-orm";
 import { z } from "zod";
+import { requireTenant, requireUser, type TenantEnv } from "../middleware/tenant";
 
-export const divisionRouter = new Hono();
+export const divisionRouter = new Hono<TenantEnv>();
+
+// Every route below is tenant-scoped. The tenant comes from the caller's
+// membership, never from the request — see middleware/tenant.ts.
+divisionRouter.use("*", requireUser, requireTenant);
 
 const createDivisionSchema = z.object({
   name: z.string().min(1).max(100),
@@ -13,10 +18,7 @@ const createDivisionSchema = z.object({
 
 // Get all divisions for a tournament
 divisionRouter.get("/:tournamentId/divisions", async (c) => {
-  const tenantId = c.req.header("x-tenant-id");
-  if (!tenantId) {
-    return c.json({ error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } }, 400);
-  }
+  const tenantId = c.get("tenantId");
 
   const tournamentId = c.req.param("tournamentId");
 
@@ -50,13 +52,7 @@ divisionRouter.post(
   "/:tournamentId/divisions",
   zValidator("json", createDivisionSchema),
   async (c) => {
-    const tenantId = c.req.header("x-tenant-id");
-    if (!tenantId) {
-      return c.json(
-        { error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } },
-        400
-      );
-    }
+    const tenantId = c.get("tenantId");
 
     const tournamentId = c.req.param("tournamentId");
 
@@ -88,10 +84,7 @@ divisionRouter.post(
 
 // Delete a division
 divisionRouter.delete("/:tournamentId/divisions/:divisionId", async (c) => {
-  const tenantId = c.req.header("x-tenant-id");
-  if (!tenantId) {
-    return c.json({ error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } }, 400);
-  }
+  const tenantId = c.get("tenantId");
 
   const divisionId = c.req.param("divisionId");
 

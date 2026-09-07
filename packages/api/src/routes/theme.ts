@@ -5,16 +5,36 @@ import { tenants } from "@tourneyforge/db";
 import { eq } from "drizzle-orm";
 import { updateTenantThemeSchema, logoUploadRequestSchema } from "@tourneyforge/validators";
 import { z } from "zod";
+import { requireTenant, requireUser, type TenantEnv } from "../middleware/tenant";
+import { publicTenantColumns } from "./tenants";
 
-export const themeRouter = new Hono();
+export const themeRouter = new Hono<TenantEnv>();
+
+// Every route below mutates a club's branding. They took the tenant from the `:id`
+// path segment and nothing else, so any caller could rewrite any club's theme or mint
+// an upload URL under its logo prefix. The path id is now checked against the
+// caller's membership rather than trusted.
+themeRouter.use("*", requireUser, requireTenant);
+
+/**
+ * Returns a 403 response when the `:id` in the path is not the caller's tenant.
+ * Kept explicit rather than silently substituting the caller's own id: a request
+ * naming someone else's club is a mistake worth reporting, not one worth guessing at.
+ */
+function denyIfNotCallersTenant(c: { req: { param: (k: string) => string }; get: (k: "tenantId") => string }) {
+  return c.req.param("id") !== c.get("tenantId");
+}
 
 /**
  * PATCH /api/tenants/:id/theme
  * Update a tenant's theme preset + color overrides.
- * Requires tenant auth (enforced by caller middleware in Phase 2).
+ * Requires tenant membership (enforced by requireUser + requireTenant above).
  */
 themeRouter.patch("/:id/theme", zValidator("json", updateTenantThemeSchema), async (c) => {
-  const id = c.req.param("id");
+  if (denyIfNotCallersTenant(c)) {
+    return c.json({ error: { code: "FORBIDDEN", message: "Not a member of that tenant" } }, 403);
+  }
+  const id = c.get("tenantId");
   const body = c.req.valid("json");
 
   const updated = await db
@@ -28,7 +48,7 @@ themeRouter.patch("/:id/theme", zValidator("json", updateTenantThemeSchema), asy
       updatedAt: new Date(),
     })
     .where(eq(tenants.id, id))
-    .returning();
+    .returning(publicTenantColumns);
 
   if (!updated.length) {
     return c.json({ error: { code: "NOT_FOUND", message: "Tenant not found" } }, 404);
@@ -46,7 +66,10 @@ themeRouter.post(
   "/:id/logo-upload-url",
   zValidator("json", logoUploadRequestSchema),
   async (c) => {
-    const id = c.req.param("id");
+    if (denyIfNotCallersTenant(c)) {
+      return c.json({ error: { code: "FORBIDDEN", message: "Not a member of that tenant" } }, 403);
+    }
+    const id = c.get("tenantId");
     const { contentType } = c.req.valid("json");
 
     // Verify tenant exists
@@ -120,14 +143,17 @@ themeRouter.patch(
   "/:id/logo",
   zValidator("json", z.object({ logoUrl: z.string().url() })),
   async (c) => {
-    const id = c.req.param("id");
+    if (denyIfNotCallersTenant(c)) {
+      return c.json({ error: { code: "FORBIDDEN", message: "Not a member of that tenant" } }, 403);
+    }
+    const id = c.get("tenantId");
     const { logoUrl } = c.req.valid("json");
 
     const updated = await db
       .update(tenants)
       .set({ logoUrl, updatedAt: new Date() })
       .where(eq(tenants.id, id))
-      .returning();
+      .returning(publicTenantColumns);
 
     if (!updated.length) {
       return c.json({ error: { code: "NOT_FOUND", message: "Tenant not found" } }, 404);

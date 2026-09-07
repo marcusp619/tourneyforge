@@ -4,15 +4,17 @@ import { db } from "@tourneyforge/db";
 import { tournaments } from "@tourneyforge/db";
 import { createTournamentSchema, updateTournamentSchema } from "@tourneyforge/validators";
 import { eq, and, isNull } from "drizzle-orm";
+import { requireTenant, requireUser, type TenantEnv } from "../middleware/tenant";
 
-export const tournamentRouter = new Hono();
+export const tournamentRouter = new Hono<TenantEnv>();
+
+// Every route below is tenant-scoped. The tenant comes from the caller's
+// membership, never from the request — see middleware/tenant.ts.
+tournamentRouter.use("*", requireUser, requireTenant);
 
 // Get all tournaments for a tenant
 tournamentRouter.get("/", async (c) => {
-  const tenantId = c.req.header("x-tenant-id");
-  if (!tenantId) {
-    return c.json({ error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } }, 400);
-  }
+  const tenantId = c.get("tenantId");
 
   const tenantTournaments = await db
     .select()
@@ -36,10 +38,7 @@ tournamentRouter.get("/:id", async (c) => {
 
 // Create tournament
 tournamentRouter.post("/", zValidator("json", createTournamentSchema), async (c) => {
-  const tenantId = c.req.header("x-tenant-id");
-  if (!tenantId) {
-    return c.json({ error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } }, 400);
-  }
+  const tenantId = c.get("tenantId");
 
   const body = c.req.valid("json");
   const newTournament = await db
@@ -65,10 +64,7 @@ tournamentRouter.patch("/:id", zValidator("json", updateTournamentSchema), async
 
 // Delete tournament (soft delete)
 tournamentRouter.delete("/:id", async (c) => {
-  const tenantId = c.req.header("x-tenant-id");
-  if (!tenantId) {
-    return c.json({ error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } }, 400);
-  }
+  const tenantId = c.get("tenantId");
 
   const id = c.req.param("id");
   const [deleted] = await db

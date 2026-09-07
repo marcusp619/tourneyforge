@@ -3,8 +3,13 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { db, registrations, teams, users } from "@tourneyforge/db";
 import { eq, and, count } from "drizzle-orm";
+import { requireTenant, requireUser, type TenantEnv } from "../middleware/tenant";
 
-export const registrationRouter = new Hono();
+export const registrationRouter = new Hono<TenantEnv>();
+
+// Every route below is tenant-scoped. The tenant comes from the caller's
+// membership, never from the request — see middleware/tenant.ts.
+registrationRouter.use("*", requireUser, requireTenant);
 
 // GET /api/registrations?tournamentId=<uuid> — list registrations for a tournament
 registrationRouter.get(
@@ -12,10 +17,7 @@ registrationRouter.get(
   zValidator("query", z.object({ tournamentId: z.string().uuid() })),
   async (c) => {
     const { tournamentId } = c.req.valid("query");
-    const tenantId = c.req.header("x-tenant-id");
-    if (!tenantId) {
-      return c.json({ error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } }, 400);
-    }
+    const tenantId = c.get("tenantId");
 
     const regs = await db
       .select({
@@ -42,10 +44,7 @@ registrationRouter.get(
   zValidator("query", z.object({ tournamentId: z.string().uuid() })),
   async (c) => {
     const { tournamentId } = c.req.valid("query");
-    const tenantId = c.req.header("x-tenant-id");
-    if (!tenantId) {
-      return c.json({ error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } }, 400);
-    }
+    const tenantId = c.get("tenantId");
     const result = await db
       .select({ value: count() })
       .from(registrations)
@@ -74,10 +73,7 @@ registrationRouter.patch(
   async (c) => {
     const id = c.req.param("id");
     const body = c.req.valid("json");
-    const tenantId = c.req.header("x-tenant-id");
-    if (!tenantId) {
-      return c.json({ error: { code: "BAD_REQUEST", message: "Missing x-tenant-id header" } }, 400);
-    }
+    const tenantId = c.get("tenantId");
 
     const [updated] = await db
       .update(registrations)
